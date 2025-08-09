@@ -1,187 +1,171 @@
 package com.example.myapplication.service
 
 import android.content.Context
-import android.content.SharedPreferences
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import com.example.myapplication.data.repository.ISettingsRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import timber.log.Timber
 
 /**
- * Manages low-power mode for extended usage scenarios.
- * 
- * This class provides a centralized way to control and observe the low-power mode state
- * across the application. When enabled, components should adjust their behavior to
- * minimize battery consumption at the cost of some positioning accuracy.
+ * Coordinates power-saving features across the application.
+ * Manages low-power mode state and notifies components when power mode changes.
  */
-class LowPowerMode(private val context: Context) {
+class LowPowerMode(
+    private val context: Context
+) : DefaultLifecycleObserver, KoinComponent {
 
+    private val settingsRepository: ISettingsRepository by inject()
+    private val batteryMonitor: BatteryMonitor by inject()
+    private val coroutineScope = CoroutineScope(Dispatchers.IO)
+    
+    // Low-power mode state
+    private val _isLowPowerModeActive = MutableStateFlow(false)
+    val isLowPowerModeActive: StateFlow<Boolean> = _isLowPowerModeActive.asStateFlow()
+    
+    // Sampling rate reduction factor
+    private val _samplingRateReductionFactor = MutableStateFlow(2.0f)
+    val samplingRateReductionFactor: StateFlow<Float> = _samplingRateReductionFactor.asStateFlow()
+    
     companion object {
-        private const val PREFS_NAME = "low_power_mode_prefs"
-        private const val KEY_LOW_POWER_ENABLED = "low_power_enabled"
-        private const val KEY_AUTO_ENABLE_ON_LOW_BATTERY = "auto_enable_on_low_battery"
-        private const val KEY_LOW_BATTERY_THRESHOLD = "low_battery_threshold"
-        
-        // Default values
-        private const val DEFAULT_AUTO_ENABLE = true
-        private const val DEFAULT_LOW_BATTERY_THRESHOLD = 20 // Percentage
-        
-        // Scan settings for low-power mode
-        const val LOW_POWER_SCAN_PERIOD_MS = 2000L
-        const val LOW_POWER_SCAN_INTERVAL_MS = 30000L // 30 seconds between scans
-        
-        // Sensor settings for low-power mode
-        const val LOW_POWER_SENSOR_SAMPLING_PERIOD_MS = 100L // 10Hz instead of typical 50Hz
-        const val LOW_POWER_POSITION_UPDATE_INTERVAL_MS = 5000L // 5 seconds between position updates
+        // Constants for low-power scanning
+        const val LOW_POWER_SCAN_PERIOD_MS: Long = 1000
+        const val LOW_POWER_SCAN_INTERVAL_MS: Long = 5000
     }
     
-    // Preferences for persisting settings
-    private val preferences: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    
-    // State flows for reactive programming
-    private val _lowPowerModeEnabled = MutableStateFlow(preferences.getBoolean(KEY_LOW_POWER_ENABLED, false))
-    private val _autoEnableOnLowBattery = MutableStateFlow(preferences.getBoolean(KEY_AUTO_ENABLE_ON_LOW_BATTERY, DEFAULT_AUTO_ENABLE))
-    private val _lowBatteryThreshold = MutableStateFlow(preferences.getInt(KEY_LOW_BATTERY_THRESHOLD, DEFAULT_LOW_BATTERY_THRESHOLD))
-    
-    // Public immutable flows for observing state changes
-    val lowPowerModeEnabled: StateFlow<Boolean> = _lowPowerModeEnabled.asStateFlow()
-    val autoEnableOnLowBattery: StateFlow<Boolean> = _autoEnableOnLowBattery.asStateFlow()
-    val lowBatteryThreshold: StateFlow<Int> = _lowBatteryThreshold.asStateFlow()
+    // List of components that need to be notified of power mode changes
+    private val powerModeListeners = mutableListOf<PowerModeListener>()
     
     init {
-        Timber.d("LowPowerMode initialized, enabled=${_lowPowerModeEnabled.value}, " +
-                "autoEnable=${_autoEnableOnLowBattery.value}, " +
-                "threshold=${_lowBatteryThreshold.value}%")
-    }
-    
-    /**
-     * Enables or disables low-power mode.
-     * 
-     * @param enabled True to enable low-power mode, false to disable
-     */
-    fun setLowPowerModeEnabled(enabled: Boolean) {
-        if (_lowPowerModeEnabled.value != enabled) {
-            _lowPowerModeEnabled.value = enabled
-            preferences.edit().putBoolean(KEY_LOW_POWER_ENABLED, enabled).apply()
-            
-            Timber.i("Low-power mode ${if (enabled) "enabled" else "disabled"}")
-            
-            // Notify listeners about the change
-            notifyLowPowerModeChanged(enabled)
-        }
-    }
-    
-    /**
-     * Sets whether low-power mode should be automatically enabled when battery is low.
-     * 
-     * @param autoEnable True to automatically enable low-power mode on low battery
-     */
-    fun setAutoEnableOnLowBattery(autoEnable: Boolean) {
-        if (_autoEnableOnLowBattery.value != autoEnable) {
-            _autoEnableOnLowBattery.value = autoEnable
-            preferences.edit().putBoolean(KEY_AUTO_ENABLE_ON_LOW_BATTERY, autoEnable).apply()
-            
-            Timber.d("Auto-enable low-power mode on low battery: $autoEnable")
-        }
-    }
-    
-    /**
-     * Sets the battery threshold for automatically enabling low-power mode.
-     * 
-     * @param threshold Battery percentage threshold (0-100)
-     */
-    fun setLowBatteryThreshold(threshold: Int) {
-        val validThreshold = threshold.coerceIn(5, 50) // Reasonable range
+        // Register as a battery monitor listener
+        batteryMonitor.addPowerModeListener(object : BatteryMonitor.PowerModeListener {
+            override fun onPowerModeChanged(lowPowerMode: Boolean, samplingRateReductionFactor: Float) {
+                _isLowPowerModeActive.value = lowPowerMode
+                _samplingRateReductionFactor.value = samplingRateReductionFactor
+                notifyPowerModeChanged()
+            }
+        })
         
-        if (_lowBatteryThreshold.value != validThreshold) {
-            _lowBatteryThreshold.value = validThreshold
-            preferences.edit().putInt(KEY_LOW_BATTERY_THRESHOLD, validThreshold).apply()
+        // Load initial settings
+        coroutineScope.launch {
+            _isLowPowerModeActive.value = settingsRepository.isLowPowerModeEnabled()
+            _samplingRateReductionFactor.value = settingsRepository.getSamplingRateReductionFactor()
+            Timber.d("LowPowerMode initialized: active=${_isLowPowerModeActive.value}, " +
+                    "reduction factor=${_samplingRateReductionFactor.value}x")
+        }
+    }
+    
+    override fun onResume(owner: LifecycleOwner) {
+        Timber.d("LowPowerMode: onResume")
+        // Refresh settings when resuming
+        coroutineScope.launch {
+            val enabled = settingsRepository.isLowPowerModeEnabled()
+            val factor = settingsRepository.getSamplingRateReductionFactor()
             
-            Timber.d("Low battery threshold set to $validThreshold%")
+            if (enabled != _isLowPowerModeActive.value || factor != _samplingRateReductionFactor.value) {
+                _isLowPowerModeActive.value = enabled
+                _samplingRateReductionFactor.value = factor
+                notifyPowerModeChanged()
+            }
         }
     }
     
     /**
-     * Checks if low-power mode should be enabled based on current battery level.
-     * 
-     * @param batteryLevel Current battery level percentage (0-100)
-     * @return True if low-power mode should be enabled
+     * Enables or disables low-power mode manually.
+     * This will override the automatic battery-based activation.
      */
-    fun shouldEnableLowPowerMode(batteryLevel: Int): Boolean {
-        // If already enabled, keep it enabled
-        if (_lowPowerModeEnabled.value) {
-            return true
+    fun setLowPowerMode(enabled: Boolean) {
+        coroutineScope.launch {
+            settingsRepository.setLowPowerModeEnabled(enabled)
+            _isLowPowerModeActive.value = enabled
+            notifyPowerModeChanged()
+            Timber.d("Low-power mode ${if (enabled) "enabled" else "disabled"} manually")
         }
+    }
+    
+    /**
+     * Updates the sampling rate reduction factor for low-power mode.
+     */
+    fun setSamplingRateReductionFactor(factor: Float) {
+        coroutineScope.launch {
+            val validFactor = factor.coerceIn(1.0f, 10.0f)
+            settingsRepository.setSamplingRateReductionFactor(validFactor)
+            _samplingRateReductionFactor.value = validFactor
+            notifyPowerModeChanged()
+            Timber.d("Sampling rate reduction factor updated to ${validFactor}x")
+        }
+    }
+    
+    /**
+     * Registers a component to be notified of power mode changes.
+     */
+    fun registerPowerModeListener(listener: PowerModeListener) {
+        if (!powerModeListeners.contains(listener)) {
+            powerModeListeners.add(listener)
+            // Notify the new listener of the current state
+            listener.onPowerModeChanged(
+                _isLowPowerModeActive.value,
+                _samplingRateReductionFactor.value
+            )
+        }
+    }
+    
+    /**
+     * Unregisters a component from power mode change notifications.
+     */
+    fun unregisterPowerModeListener(listener: PowerModeListener) {
+        powerModeListeners.remove(listener)
+    }
+    
+    /**
+     * Notifies all registered components of a power mode change.
+     */
+    private fun notifyPowerModeChanged() {
+        val isActive = _isLowPowerModeActive.value
+        val factor = _samplingRateReductionFactor.value
         
-        // If auto-enable is on and battery is below threshold, enable low-power mode
-        return _autoEnableOnLowBattery.value && batteryLevel <= _lowBatteryThreshold.value
-    }
-    
-    /**
-     * Updates low-power mode based on current battery level.
-     * 
-     * @param batteryLevel Current battery level percentage (0-100)
-     * @param isCharging Whether the device is currently charging
-     * @return True if low-power mode state changed
-     */
-    fun updateBasedOnBatteryLevel(batteryLevel: Int, isCharging: Boolean): Boolean {
-        // If charging, disable low-power mode
-        if (isCharging && _lowPowerModeEnabled.value) {
-            setLowPowerModeEnabled(false)
-            Timber.i("Low-power mode disabled because device is charging")
-            return true
-        }
-        
-        // If battery is low and auto-enable is on, enable low-power mode
-        if (!isCharging && _autoEnableOnLowBattery.value && 
-            batteryLevel <= _lowBatteryThreshold.value && 
-            !_lowPowerModeEnabled.value) {
-            
-            setLowPowerModeEnabled(true)
-            Timber.i("Low-power mode automatically enabled due to low battery ($batteryLevel%)")
-            return true
-        }
-        
-        return false
-    }
-    
-    // List of listeners to notify when low-power mode changes
-    private val listeners = mutableListOf<LowPowerModeListener>()
-    
-    /**
-     * Adds a listener to be notified when low-power mode changes.
-     * 
-     * @param listener The listener to add
-     */
-    fun addListener(listener: LowPowerModeListener) {
-        if (!listeners.contains(listener)) {
-            listeners.add(listener)
-            
-            // Immediately notify the new listener of the current state
-            listener.onLowPowerModeChanged(_lowPowerModeEnabled.value)
+        powerModeListeners.forEach { listener ->
+            listener.onPowerModeChanged(isActive, factor)
         }
     }
     
     /**
-     * Removes a previously added listener.
+     * Calculates a reduced interval based on the normal interval and the current reduction factor.
+     * Used to reduce sampling rates in low-power mode.
      * 
-     * @param listener The listener to remove
+     * @param normalIntervalMs The normal interval in milliseconds
+     * @return The adjusted interval in milliseconds
      */
-    fun removeListener(listener: LowPowerModeListener) {
-        listeners.remove(listener)
+    fun getAdjustedInterval(normalIntervalMs: Long): Long {
+        return if (_isLowPowerModeActive.value) {
+            (normalIntervalMs * _samplingRateReductionFactor.value).toLong()
+        } else {
+            normalIntervalMs
+        }
     }
     
     /**
-     * Notifies all listeners about a change in low-power mode.
-     * 
-     * @param enabled The new low-power mode state
+     * Interface for components that need to respond to power mode changes.
      */
-    private fun notifyLowPowerModeChanged(enabled: Boolean) {
-        listeners.forEach { it.onLowPowerModeChanged(enabled) }
+    interface PowerModeListener {
+        /**
+         * Called when the power mode changes.
+         * 
+         * @param lowPowerMode True if low-power mode is active, false otherwise
+         * @param samplingRateReductionFactor The factor by which to reduce sampling rates
+         */
+        fun onPowerModeChanged(lowPowerMode: Boolean, samplingRateReductionFactor: Float)
     }
     
     /**
-     * Interface for components that need to be notified of low-power mode changes.
+     * Interface for components that need to be notified of low power mode changes.
      */
     interface LowPowerModeListener {
         /**
@@ -190,5 +174,83 @@ class LowPowerMode(private val context: Context) {
          * @param enabled True if low-power mode is enabled, false otherwise
          */
         fun onLowPowerModeChanged(enabled: Boolean)
+    }
+    
+    // List of low power mode listeners
+    private val lowPowerModeListeners = mutableListOf<LowPowerModeListener>()
+    
+    /**
+     * Registers a component to be notified of low power mode changes.
+     */
+    fun addListener(listener: LowPowerModeListener) {
+        if (!lowPowerModeListeners.contains(listener)) {
+            lowPowerModeListeners.add(listener)
+            // Notify the new listener of the current state
+            listener.onLowPowerModeChanged(_isLowPowerModeActive.value)
+        }
+    }
+    
+    /**
+     * Unregisters a component from low power mode change notifications.
+     */
+    fun removeListener(listener: LowPowerModeListener) {
+        lowPowerModeListeners.remove(listener)
+    }
+    
+    // Low power mode enabled state for UI components
+    val lowPowerModeEnabled: StateFlow<Boolean> = _isLowPowerModeActive.asStateFlow()
+    
+    // Auto-enable on low battery settings
+    private val _autoEnableOnLowBattery = MutableStateFlow(true)
+    val autoEnableOnLowBattery: StateFlow<Boolean> = _autoEnableOnLowBattery.asStateFlow()
+    
+    // Low battery threshold
+    private val _lowBatteryThreshold = MutableStateFlow(20)
+    val lowBatteryThreshold: StateFlow<Int> = _lowBatteryThreshold.asStateFlow()
+    
+    /**
+     * Sets whether low power mode should be automatically enabled on low battery.
+     */
+    fun setAutoEnableOnLowBattery(enabled: Boolean) {
+        _autoEnableOnLowBattery.value = enabled
+    }
+    
+    /**
+     * Sets the battery threshold for automatic low power mode activation.
+     */
+    fun setLowBatteryThreshold(threshold: Int) {
+        _lowBatteryThreshold.value = threshold.coerceIn(5, 50)
+    }
+    
+    /**
+     * Sets the low power mode enabled state and notifies listeners.
+     */
+    fun setLowPowerModeEnabled(enabled: Boolean) {
+        _isLowPowerModeActive.value = enabled
+        lowPowerModeListeners.forEach { listener ->
+            listener.onLowPowerModeChanged(enabled)
+        }
+    }
+    
+    /**
+     * Updates low-power mode based on battery level and charging state.
+     * Automatically enables low-power mode when battery is below threshold
+     * and device is not charging, if auto-enable is turned on.
+     * 
+     * @param batteryLevel Current battery level (0-100)
+     * @param isCharging Whether the device is currently charging
+     */
+    fun updateBasedOnBatteryLevel(batteryLevel: Int, isCharging: Boolean) {
+        if (!_autoEnableOnLowBattery.value) {
+            return  // Auto-enable is turned off
+        }
+        
+        val threshold = _lowBatteryThreshold.value
+        val shouldEnable = batteryLevel <= threshold && !isCharging
+        
+        if (shouldEnable != _isLowPowerModeActive.value) {
+            Timber.d("Auto-adjusting low power mode: enabled=$shouldEnable (battery=$batteryLevel%, threshold=$threshold%, charging=$isCharging)")
+            setLowPowerModeEnabled(shouldEnable)
+        }
     }
 }

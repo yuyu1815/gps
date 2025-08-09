@@ -1,30 +1,38 @@
 package com.example.myapplication.di
 
-import com.example.myapplication.service.BackgroundProcessingManager
+import com.example.myapplication.domain.usecase.fusion.FuseSensorDataUseCase
+import com.example.myapplication.service.BatteryMonitor
 import com.example.myapplication.service.BatteryOptimizer
-import com.example.myapplication.service.BeaconDiscovery
-import com.example.myapplication.service.BeaconMaintenanceTool
-import com.example.myapplication.service.BleScanner
-import com.example.myapplication.service.BleScanService
+import com.example.myapplication.service.LogFileManager
 import com.example.myapplication.service.LowPowerMode
 import com.example.myapplication.service.PdrTracker
 import com.example.myapplication.service.PerformanceMetricsCollector
-import com.example.myapplication.service.RemoteConfigurationService
+import com.example.myapplication.service.FusionCoordinator
 import com.example.myapplication.service.SensorMonitor
-import com.example.myapplication.service.SystemHealthMonitor
+import com.example.myapplication.service.StaticDetector
+import com.example.myapplication.wifi.WifiScanner
+import com.example.myapplication.wifi.WifiFingerprintManager
+import com.example.myapplication.wifi.WifiPositionEstimator
+import com.example.myapplication.slam.ArCoreManager
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
 /**
  * Koin module that provides service-related dependencies.
+ * Heavy initialization is deferred to prevent blocking the main thread.
  */
 val serviceModule = module {
-    // Provide LowPowerMode as a singleton
+    // Provide LogFileManager as a singleton - 軽量な初期化
+    single {
+        LogFileManager(androidContext())
+    }
+
+    // Provide LowPowerMode as a singleton - 軽量な初期化
     single {
         LowPowerMode(androidContext())
     }
     
-    // Provide BatteryOptimizer as a singleton
+    // Provide BatteryOptimizer as a singleton - 軽量な初期化
     single {
         BatteryOptimizer(
             context = androidContext(),
@@ -32,33 +40,41 @@ val serviceModule = module {
         )
     }
     
-    // Provide BackgroundProcessingManager as a singleton
-    single {
-        BackgroundProcessingManager(androidContext())
-    }
+    // BLE components removed for Hyper-like minimal build
     
-    // Provide BeaconDiscovery as a singleton
+    // Provide SensorMonitor as a singleton - 遅延初期化
+    single {
+        SensorMonitor(androidContext()).apply {
+            // センサー初期化は遅延実行
+        }
+    }
+
+    // Provide WifiScanner as a singleton - 遅延初期化
+    single {
+        WifiScanner(androidContext()).apply {
+            // Wi-Fi初期化は遅延実行
+        }
+    }
+
+    // Provide Wi‑Fi fingerprinting components - 軽量な初期化
+    single { WifiFingerprintManager(get()) }
+    single { WifiPositionEstimator(get(), get(), get()) }
+
+    // Provide SLAM manager (real ARCore manager) - 遅延初期化
     single { 
-        BeaconDiscovery(get()) 
+        ArCoreManager(androidContext()).apply {
+            // ARCore初期化は遅延実行
+        }
     }
     
-    // Provide BleScanner factory (new instance each time)
-    factory { 
-        BleScanner(
-            context = androidContext(),
-            beaconRepository = get(),
-            updateBeaconRssiUseCase = get(),
-            updateBeaconStalenessUseCase = get(),
-            beaconDiscovery = get()
-        ) 
+    // Provide FuseSensorDataUseCase as a factory - 軽量な初期化
+    factory {
+        FuseSensorDataUseCase(
+            positionRepository = get()
+        )
     }
     
-    // Provide SensorMonitor as a singleton
-    single {
-        SensorMonitor(androidContext())
-    }
-    
-    // Provide PdrTracker as a singleton
+    // Provide PdrTracker as a singleton - 遅延初期化
     single {
         PdrTracker(
             sensorMonitor = get(),
@@ -66,35 +82,34 @@ val serviceModule = module {
             detectStepUseCase = get(),
             estimateHeadingUseCase = get(),
             estimateStepLengthUseCase = get(),
-            updatePdrPositionUseCase = get()
-        )
+            updatePdrPositionUseCase = get(),
+            fuseSensorDataUseCase = get()
+        ).apply {
+            // PDR初期化は遅延実行
+        }
     }
-    
-    // Provide PerformanceMetricsCollector as a singleton
+
+    // Provide FusionCoordinator - 遅延初期化
     single {
-        PerformanceMetricsCollector(androidContext())
-    }
-    
-    // Provide BeaconMaintenanceTool as a singleton
-    single {
-        BeaconMaintenanceTool(
-            beaconRepository = get()
-        )
-    }
-    
-    // Provide RemoteConfigurationService as a singleton
-    single {
-        RemoteConfigurationService(
-            beaconRepository = get(),
+        FusionCoordinator(
+            wifiScanner = get(),
+            wifiPositionEstimator = get(),
+            arCoreManager = get(),
+            fuseSensorDataUseCase = get(),
+            positionRepository = get(),
             settingsRepository = get()
-        )
+        ).apply {
+            // Fusion初期化は遅延実行
+        }
     }
     
-    // Provide SystemHealthMonitor as a singleton
+    // Metrics collector retained (optional); comment out if not needed
+    single { PerformanceMetricsCollector(androidContext()) }
+    
+    // Beacon-related services removed for minimal build
+    
+    // Provide BatteryMonitor as a singleton - 軽量な初期化
     single {
-        SystemHealthMonitor(
-            context = androidContext(),
-            beaconRepository = get()
-        )
+        BatteryMonitor(androidContext())
     }
 }

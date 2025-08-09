@@ -2,23 +2,38 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Bluetooth permissions -->
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <!-- Network access for update checks -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Bluetooth permissions (removed for Hyper-like minimal build) -->
     
     <!-- Location permissions -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    
+    <!-- Wi-Fi permissions -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- Required on API 33+ for Wi‑Fi scanning -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
+
+    <!-- Notifications (required on API 33+ to post foreground notifications) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
     <!-- Sensor permissions -->
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="true" />
     <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="true" />
     <uses-feature android:name="android.hardware.sensor.compass" android:required="true" />
     
-    <!-- BLE feature -->
-    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+    <!-- BLE feature removed -->
+    
+    <!-- Camera permissions for SLAM -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="true" />
+    <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
+    
+    <!-- ARCore optional to allow devices without AR -->
+    <uses-feature android:name="com.google.ar.core" android:required="false" />
     
     <!-- Foreground service permission -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -41,7 +56,12 @@
             android:roundIcon="@drawable/ic_launcher_foreground"
             android:supportsRtl="true"
             android:theme="@style/Theme.MyApplication"
+            android:localeConfig="@xml/locale_config"
             tools:targetApi="31">
+        <!-- Required by ARCore: declares this app uses AR Optional and allows Play Services for AR to manage installation -->
+        <meta-data
+            android:name="com.google.ar.core"
+            android:value="optional" />
         <activity
                 android:name=".MainActivity"
                 android:exported="true"
@@ -54,12 +74,7 @@
             </intent-filter>
         </activity>
         
-        <!-- Background BLE scanning service -->
-        <service
-            android:name=".service.BleScanService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="location" />
+        <!-- BLE background service removed -->
     </application>
 
 </manifest>

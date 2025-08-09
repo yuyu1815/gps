@@ -1,0 +1,516 @@
+# Testing Patterns for Indoor Positioning Applications
+
+## **Core Testing Principles**
+
+### **1. Ground Truth Validation**
+
+Always test against known ground truth positions:
+
+```kotlin
+class GroundTruthTest {
+    @Test
+    fun testPositioningAccuracy() {
+        // Define known test path
+        val testPath = listOf(
+            Position(0f, 0f),
+            Position(5f, 0f),
+            Position(5f, 5f),
+            Position(0f, 5f)
+        )
+        
+        val positioningSystem = PositioningSystem()
+        val results = mutableListOf<Position>()
+        
+        // Simulate movement along test path
+        testPath.forEach { expectedPosition ->
+            // Simulate sensor data for this position
+            val sensorData = generateSensorDataForPosition(expectedPosition)
+            positioningSystem.updatePosition(sensorData)
+            
+            val estimatedPosition = positioningSystem.getCurrentPosition()
+            results.add(estimatedPosition)
+        }
+        
+        // Calculate RMSE
+        val rmse = calculateRMSE(testPath, results)
+        assertTrue("RMSE should be less than 2 meters", rmse < 2.0)
+    }
+    
+    private fun calculateRMSE(expected: List<Position>, actual: List<Position>): Double {
+        return sqrt(expected.zip(actual).sumOf { (exp, act) ->
+            (exp.x - act.x).pow(2) + (exp.y - act.y).pow(2)
+        } / expected.size)
+    }
+}
+```
+
+### **2. Sensor Data Simulation**
+
+Create realistic sensor data for testing:
+
+```kotlin
+class SensorDataSimulator {
+    fun generateAccelerometerData(
+        position: Position,
+        velocity: Vector2D,
+        noiseLevel: Float = 0.1f
+    ): FloatArray {
+        // Simulate walking pattern
+        val stepFrequency = 1.5f // Hz
+        val time = System.currentTimeMillis() / 1000f
+        
+        val baseAcceleration = 9.8f // Gravity
+        val stepAcceleration = sin(2 * PI * stepFrequency * time) * 2f
+        
+        return floatArrayOf(
+            baseAcceleration + stepAcceleration + randomNoise(noiseLevel),
+            randomNoise(noiseLevel),
+            randomNoise(noiseLevel)
+        )
+    }
+    
+    fun generateGyroscopeData(
+        heading: Float,
+        angularVelocity: Float,
+        noiseLevel: Float = 0.01f
+    ): FloatArray {
+        return floatArrayOf(
+            randomNoise(noiseLevel),
+            randomNoise(noiseLevel),
+            angularVelocity + randomNoise(noiseLevel)
+        )
+    }
+    
+    fun generateBeaconData(
+        position: Position,
+        beaconPositions: List<BeaconPosition>,
+        noiseLevel: Float = 2.0f
+    ): List<BeaconScanResult> {
+        return beaconPositions.map { beacon ->
+            val distance = calculateDistance(position, beacon.position)
+            val rssi = calculateRSSI(distance, beacon.txPower) + randomNoise(noiseLevel)
+            
+            BeaconScanResult(
+                macAddress = beacon.macAddress,
+                rssi = rssi.toInt(),
+                timestamp = System.currentTimeMillis()
+            )
+        }
+    }
+    
+    private fun calculateRSSI(distance: Float, txPower: Int): Float {
+        val environmentalFactor = 2.0f
+        return txPower - 10 * environmentalFactor * log10(distance)
+    }
+}
+```
+
+## **Unit Testing Patterns**
+
+### **1. Coordinate Transformation Tests**
+
+```kotlin
+class CoordinateTransformerTest {
+    private lateinit var transformer: CoordinateTransformer
+    private lateinit var testMap: IndoorMap
+    
+    @Before
+    fun setup() {
+        testMap = IndoorMap(
+            id = "test_map",
+            name = "Test Map",
+            widthMeters = 100f,
+            heightMeters = 50f,
+            pixelsPerMeter = 10f,
+            imagePath = "test_map.png"
+        )
+        transformer = CoordinateTransformer(testMap)
+    }
+    
+    @Test
+    fun testMetersToScreenConversion() {
+        val physicalPosition = Pair(10f, 20f)
+        val screenPosition = transformer.metersToScreen(physicalPosition.first, physicalPosition.second)
+        
+        // Verify conversion
+        assertEquals(100f, screenPosition.first, 0.1f) // 10m * 10px/m
+        assertEquals(200f, screenPosition.second, 0.1f) // 20m * 10px/m
+    }
+    
+    @Test
+    fun testScreenToMetersConversion() {
+        val screenPosition = Pair(100f, 200f)
+        val physicalPosition = transformer.screenToMeters(screenPosition.first, screenPosition.second)
+        
+        // Verify reverse conversion
+        assertEquals(10f, physicalPosition.first, 0.1f)
+        assertEquals(20f, physicalPosition.second, 0.1f)
+    }
+    
+    @Test
+    fun testZoomAndPanTransformation() {
+        transformer.setZoom(2f)
+        transformer.setPanOffset(50f, 25f)
+        
+        val physicalPosition = Pair(10f, 20f)
+        val screenPosition = transformer.metersToScreen(physicalPosition.first, physicalPosition.second)
+        
+        // Verify zoom and pan are applied correctly
+        // Expected: (10m * 10px/m * 2zoom) + 50pan = 250px
+        assertEquals(250f, screenPosition.first, 0.1f)
+    }
+}
+```
+
+### **2. Sensor Fusion Tests**
+
+```kotlin
+class SensorFusionTest {
+    private lateinit var complementaryFilter: ComplementaryFilter
+    
+    @Before
+    fun setup() {
+        complementaryFilter = ComplementaryFilter()
+    }
+    
+    @Test
+    fun testGyroscopeIntegration() {
+        val dt = 0.01f // 10ms
+        val angularVelocity = 0.1f // rad/s
+        
+        // Simulate 1 second of rotation
+        repeat(100) {
+            complementaryFilter.update(angularVelocity, dt, 1.0f)
+        }
+        
+        val expectedHeading = angularVelocity * dt * 100 // 0.1 rad
+        assertEquals(expectedHeading, complementaryFilter.getHeading(), 0.01f)
+    }
+    
+    @Test
+    fun testDriftCorrection() {
+        // Simulate gyroscope drift
+        val dt = 0.01f
+        val driftRate = 0.01f // rad/s drift
+        
+        repeat(1000) {
+            complementaryFilter.update(driftRate, dt, 1.0f)
+        }
+        
+        // With drift correction, heading should be stable
+        val heading = complementaryFilter.getHeading()
+        assertTrue("Heading should be corrected for drift", abs(heading) < 0.1f)
+    }
+}
+```
+
+### **3. Step Detection Tests**
+
+```kotlin
+class StepDetectionTest {
+    private lateinit var stepDetector: RobustStepDetector
+    
+    @Before
+    fun setup() {
+        stepDetector = RobustStepDetector()
+    }
+    
+    @Test
+    fun testStepDetectionWithWalkingPattern() {
+        val simulator = SensorDataSimulator()
+        var stepCount = 0
+        
+        // Simulate 10 seconds of walking
+        repeat(1000) { // 100Hz sampling
+            val accelData = simulator.generateAccelerometerData(
+                position = Position(0f, 0f),
+                velocity = Vector2D(1f, 0f) // Walking forward
+            )
+            
+            if (stepDetector.detectStep(accelData[0])) {
+                stepCount++
+            }
+        }
+        
+        // Should detect approximately 15 steps (1.5Hz * 10s)
+        assertTrue("Should detect reasonable number of steps", 
+                  stepCount in 10..20)
+    }
+    
+    @Test
+    fun testStepDetectionRejectsNoise() {
+        // Generate random noise
+        repeat(1000) {
+            val noise = Random.nextFloat() * 2f - 1f // -1 to 1
+            val isStep = stepDetector.detectStep(noise)
+            
+            // Should not detect steps from pure noise
+            assertFalse("Should not detect steps from noise", isStep)
+        }
+    }
+}
+```
+
+## **Integration Testing Patterns**
+
+### **1. Complete Positioning Pipeline Test**
+
+```kotlin
+class PositioningPipelineTest {
+    private lateinit var positioningSystem: PositioningSystem
+    private lateinit var sensorSimulator: SensorDataSimulator
+    
+    @Before
+    fun setup() {
+        positioningSystem = PositioningSystem()
+        sensorSimulator = SensorDataSimulator()
+    }
+    
+    @Test
+    fun testCompletePositioningPipeline() {
+        val testPath = generateTestPath()
+        val beaconPositions = generateBeaconPositions()
+        
+        val results = mutableListOf<PositionResult>()
+        
+        testPath.forEach { expectedPosition ->
+            // Generate sensor data
+            val accelData = sensorSimulator.generateAccelerometerData(expectedPosition)
+            val gyroData = sensorSimulator.generateGyroscopeData(0f, 0f)
+            val beaconData = sensorSimulator.generateBeaconData(expectedPosition, beaconPositions)
+            
+            // Update positioning system
+            positioningSystem.updateSensors(accelData, gyroData)
+            positioningSystem.updateBeacons(beaconData)
+            
+            // Get position estimate
+            val result = positioningSystem.getCurrentPosition()
+            results.add(result)
+        }
+        
+        // Verify positioning accuracy
+        val accuracy = calculatePositioningAccuracy(testPath, results)
+        assertTrue("Positioning accuracy should be acceptable", accuracy < 2.0)
+    }
+}
+```
+
+### **2. Performance Testing**
+
+```kotlin
+class PerformanceTest {
+    @Test
+    fun testRealTimePerformance() {
+        val positioningSystem = PositioningSystem()
+        val sensorSimulator = SensorDataSimulator()
+        
+        val startTime = System.nanoTime()
+        val iterations = 10000
+        
+        repeat(iterations) {
+            val sensorData = sensorSimulator.generateRandomSensorData()
+            positioningSystem.updatePosition(sensorData)
+        }
+        
+        val endTime = System.nanoTime()
+        val averageTime = (endTime - startTime) / iterations
+        
+        // Should process each update in less than 1ms
+        assertTrue("Average processing time should be < 1ms", 
+                  averageTime < 1_000_000) // 1ms in nanoseconds
+    }
+    
+    @Test
+    fun testMemoryUsage() {
+        val positioningSystem = PositioningSystem()
+        val initialMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
+        
+        // Run for extended period
+        repeat(100000) {
+            positioningSystem.updatePosition(generateRandomData())
+        }
+        
+        val finalMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()
+        val memoryIncrease = finalMemory - initialMemory
+        
+        // Memory increase should be reasonable (< 10MB)
+        assertTrue("Memory usage should be reasonable", 
+                  memoryIncrease < 10 * 1024 * 1024) // 10MB
+    }
+}
+```
+
+## **Test Data Management**
+
+### **1. Test Data Generation**
+
+```kotlin
+object TestDataGenerator {
+    fun generateCalibrationData(): CalibrationData {
+        return CalibrationData(
+            beaconCalibrations = listOf(
+                BeaconCalibration("AA:BB:CC:DD:EE:FF", -59, 1.0f),
+                BeaconCalibration("11:22:33:44:55:66", -61, 1.0f),
+                BeaconCalibration("AA:BB:CC:DD:EE:77", -60, 1.0f)
+            ),
+            environmentalFactor = 2.0f,
+            sensorCalibrations = SensorCalibrations(
+                accelerometerBias = floatArrayOf(0.1f, -0.05f, 0.02f),
+                gyroscopeBias = floatArrayOf(0.001f, 0.002f, -0.001f),
+                magnetometerBias = floatArrayOf(5f, -3f, 2f)
+            )
+        )
+    }
+    
+    fun generateMapConfig(): MapConfig {
+        return MapConfig(
+            name = "Test Office",
+            widthMeters = 50f,
+            heightMeters = 30f,
+            beacons = listOf(
+                BeaconConfig("AA:BB:CC:DD:EE:FF", 5f, 5f, -59),
+                BeaconConfig("11:22:33:44:55:66", 45f, 15f, -61),
+                BeaconConfig("AA:BB:CC:DD:EE:77", 25f, 25f, -60)
+            )
+        )
+    }
+}
+```
+
+### **2. Test Environment Setup**
+
+```kotlin
+@RunWith(AndroidJUnit4::class)
+class IntegrationTest {
+    @get:Rule
+    val composeTestRule = createComposeRule()
+    
+    @Before
+    fun setupTestEnvironment() {
+        // Setup test data
+        val testData = TestDataGenerator.generateCalibrationData()
+        val mapConfig = TestDataGenerator.generateMapConfig()
+        
+        // Initialize system with test data
+        PositioningSystem.initialize(testData, mapConfig)
+    }
+    
+    @Test
+    fun testEndToEndPositioning() {
+        composeTestRule.setContent {
+            IndoorPositioningApp()
+        }
+        
+        // Wait for system initialization
+        composeTestRule.waitUntil(timeoutMillis = 5000) {
+            composeTestRule.onAllNodesWithText("Positioning Active").fetchSemanticsNodes().size == 1
+        }
+        
+        // Verify positioning is working
+        composeTestRule.onNodeWithText("Positioning Active").assertIsDisplayed()
+    }
+}
+```
+
+## **Mock and Stub Patterns**
+
+### **1. Sensor Mock**
+
+```kotlin
+class MockSensorManager : SensorManager {
+    private val mockSensors = mutableMapOf<Int, MockSensor>()
+    
+    fun addMockSensor(type: Int, sensor: MockSensor) {
+        mockSensors[type] = sensor
+    }
+    
+    override fun getDefaultSensor(type: Int): Sensor? {
+        return mockSensors[type]
+    }
+    
+    override fun registerListener(
+        listener: SensorEventListener,
+        sensor: Sensor,
+        rate: Int
+    ): Boolean {
+        val mockSensor = mockSensors[sensor.type]
+        mockSensor?.startGeneratingData(listener, rate)
+        return true
+    }
+}
+
+class MockSensor(
+    private val type: Int,
+    private val name: String
+) : Sensor() {
+    override fun getType(): Int = type
+    override fun getName(): String = name
+    
+    fun startGeneratingData(listener: SensorEventListener, rate: Int) {
+        // Generate mock sensor data at specified rate
+        CoroutineScope(Dispatchers.Default).launch {
+            while (true) {
+                val event = SensorEvent().apply {
+                    this.sensor = this@MockSensor
+                    this.timestamp = SystemClock.elapsedRealtimeNanos()
+                    this.values = generateMockValues()
+                }
+                listener.onSensorChanged(event)
+                delay(1000 / rate) // Convert rate to delay
+            }
+        }
+    }
+}
+```
+
+### **2. BLE Mock**
+
+```kotlin
+class MockBleScanner : BleScanner {
+    private val mockBeacons = mutableListOf<MockBeacon>()
+    
+    fun addMockBeacon(beacon: MockBeacon) {
+        mockBeacons.add(beacon)
+    }
+    
+    override fun startScanning(callback: ScanCallback) {
+        // Simulate BLE scanning
+        CoroutineScope(Dispatchers.Default).launch {
+            while (true) {
+                mockBeacons.forEach { beacon ->
+                    val scanResult = beacon.generateScanResult()
+                    callback.onScanResult(ScanSettings.SCAN_MODE_LOW_LATENCY, scanResult)
+                }
+                delay(100) // Scan every 100ms
+            }
+        }
+    }
+}
+
+class MockBeacon(
+    private val macAddress: String,
+    private val position: Position,
+    private val txPower: Int
+) {
+    fun generateScanResult(): ScanResult {
+        return ScanResult(
+            device = MockBluetoothDevice(macAddress),
+            rssi = calculateRSSI(),
+            timestampNanos = SystemClock.elapsedRealtimeNanos()
+        )
+    }
+    
+    private fun calculateRSSI(): Int {
+        // Simulate RSSI based on distance and noise
+        val distance = calculateDistanceToUser()
+        val baseRSSI = txPower - 10 * 2.0 * log10(distance)
+        return (baseRSSI + Random.nextFloat() * 4 - 2).toInt() // Add noise
+    }
+}
+```
+
+This rule ensures comprehensive testing of indoor positioning applications with realistic test data, proper validation against ground truth, and thorough performance testing to maintain system reliability and accuracy.
+description:
+globs:
+alwaysApply: false
+---

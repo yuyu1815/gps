@@ -1,3 +1,320 @@
 <resources>
+    <string name="copy">Copy</string>
+    <string name="init_logs_title">Initialization Logs</string>
+    <string name="filter_init_only">Filter init-only</string>
+    <string name="no_log_files_found">No log files found</string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
     <string name="app_name">My Application</string>
+
+    <!-- Navigation -->
+    <string name="nav_map">Map</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_debug">Debug</string>
+
+    <!-- Common -->
+    <string name="back">Back</string>
+    <string name="settings_title">Settings</string>
+    <string name="reset_to_defaults">Reset to Defaults</string>
+
+    <!-- Language -->
+    <string name="language_section">Language</string>
+    <string name="app_language">App Language</string>
+    <string name="system_default">System default</string>
+    <string name="english">English</string>
+    <string name="japanese">日本語</string>
+
+    <!-- Settings sections -->
+    <string name="settings_section_ble">BLE Settings</string>
+    <string name="settings_section_pdr">Pedestrian Dead Reckoning</string>
+    <string name="settings_section_fusion">Sensor Fusion</string>
+    <string name="settings_section_wifi">Wi‑Fi Settings</string>
+    <string name="settings_section_power">Power Management</string>
+    <string name="settings_section_debug">Debug Options</string>
+    <string name="settings_section_config">Configuration Management</string>
+
+    <!-- Setting items -->
+    <string name="ble_enabled">BLE Enabled</string>
+    <string name="ble_scan_interval">BLE Scan Interval</string>
+    <string name="environmental_factor">Environmental Factor</string>
+    <string name="beacon_staleness_timeout">Beacon Staleness Timeout</string>
+    <string name="step_length">Step Length</string>
+    <string name="ble_pdr_weight">BLE/PDR Weight</string>
+    <string name="fusion_method">Fusion Method</string>
+    <string name="wifi_enabled">Wi‑Fi Enabled</string>
+    <string name="scan_wifi_access_points">Scan Wi‑Fi Access Points</string>
+    <string name="scan">Scan</string>
+    <string name="hidden_ssid">&lt;hidden&gt;</string>
+    <string name="low_power_mode">Low-Power Mode</string>
+    <string name="auto_enable_battery_level">Auto-Enable at Battery Level</string>
+    <string name="sampling_rate_reduction">Sampling Rate Reduction</string>
+    <string name="reduction_hint">Higher reduction values save more battery but may reduce positioning accuracy.</string>
+    <string name="debug_mode">Debug Mode</string>
+    <string name="data_logging">Data Logging</string>
+    <string name="export_import_desc">Export and import application settings</string>
+    <string name="export_settings">Export Settings</string>
+    <string name="import_settings">Import Settings</string>
+
+    <!-- Units / formats -->
+    <string name="ms_unit">%1$d ms</string>
+    <string name="cm_unit">%1$.1f cm</string>
+    <string name="percent_unit">%1$d%%</string>
+    <string name="dbm_unit">%1$d dBm</string>
+    <string name="multx_unit">%1$.1fx</string>
+
+    <!-- Home/Map & Debug overlay -->
+    <string name="map_title">Indoor Positioning Map</string>
+    <string name="position_label">Position:</string>
+    <string name="confidence_label">Confidence:</string>
+    <string name="beacons_label">Beacons:</string>
+    <string name="path_label">Path:</string>
+    <string name="debug_overlay_label">Debug Overlay:</string>
+
+    <!-- Buttons / controls on map -->
+    <string name="btn_show">Show</string>
+    <string name="btn_hide">Hide</string>
+    <string name="cd_settings">Settings</string>
+    <string name="cd_zoom_in">Zoom in</string>
+    <string name="cd_zoom_out">Zoom out</string>
+    <string name="cd_center_on_me">Center on my location</string>
+    <string name="sd_center_on_me">Resets zoom and centers the map on your current position</string>
+    <string name="cd_show_beacons">Show beacons</string>
+    <string name="cd_show_path">Show path</string>
+    <string name="cd_show_debug_overlay">Show debug overlay</string>
+    <string name="map_semantics">Indoor map with user position</string>
+
+    <!-- Debug overlay sections & labels -->
+    <string name="dbg_overlay_title">Debug Overlay</string>
+    <string name="dbg_wifi">Wi‑Fi Data</string>
+    <string name="dbg_signal_strength">Signal Strength</string>
+    <string name="dbg_access_points">Access Points</string>
+    <string name="dbg_position_accuracy">Position Accuracy</string>
+    <string name="dbg_slam">SLAM Data</string>
+    <string name="dbg_status">Status</string>
+    <string name="dbg_feature_count">Feature Count</string>
+    <string name="dbg_confidence">Confidence</string>
+    <string name="dbg_pdr">PDR Data</string>
+    <string name="dbg_step_count">Step Count</string>
+    <string name="dbg_heading">Heading</string>
+    <string name="dbg_step_length">Step Length</string>
+    <string name="dbg_sensor_fusion">Sensor Fusion</string>
+    <string name="dbg_method">Method</string>
+    <string name="dbg_error">Error</string>
+    <string name="dbg_device_sensors">Device Sensors</string>
+    <string name="dbg_accelerometer">Accelerometer</string>
+    <string name="dbg_gyroscope">Gyroscope</string>
+    <string name="dbg_magnetometer">Magnetometer</string>
+
+    <!-- Sensor Diagnostic Screen -->
+    <string name="sensor_diagnostic">Sensor Diagnostic</string>
+    <string name="navigate_back">Navigate back</string>
+    <string name="refresh">Refresh</string>
+    <string name="sensor_status_overview">Sensor Status Overview</string>
+    <string name="accelerometer">Accelerometer</string>
+    <string name="gyroscope">Gyroscope</string>
+    <string name="magnetometer">Magnetometer</string>
+    <string name="linear_acceleration">Linear Acceleration</string>
+    <string name="gravity">Gravity</string>
+    <string name="available">Available</string>
+    <string name="unavailable">Unavailable</string>
+    <string name="realtime_sensor_data">Real-time Sensor Data</string>
+    <string name="no_sensor_data">No sensor data available</string>
+    <string name="sensor_details">Sensor Details</string>
+    <string name="positioning_confidence">Positioning Confidence</string>
+    <string name="available_sensors">Available Sensors</string>
+    <string name="critical_sensors">Critical Sensors</string>
+    <string name="troubleshooting">Troubleshooting</string>
+    <string name="all_sensors_working">All sensors are working properly!</string>
+    <string name="tip_accelerometer_missing">Accelerometer is required for step detection and movement tracking. This sensor is essential for PDR functionality.</string>
+    <string name="tip_gyroscope_missing">Gyroscope is important for heading estimation and rotation detection. Without it, heading accuracy may be reduced.</string>
+    <string name="tip_magnetometer_missing">Magnetometer is needed for absolute heading and compass functionality. Without it, heading may drift over time.</string>
+    <string name="heading">Heading</string>
+
+    <!-- Component: DebugOverlay (component/DebugOverlay.kt) -->
+    <string name="dbg_info_title">Debug Information</string>
+    <string name="dbg_positioning">Positioning</string>
+    <string name="dbg_position">Position</string>
+    <string name="dbg_accuracy">Accuracy</string>
+    <string name="dbg_source">Source</string>
+    <string name="dbg_timestamp">Timestamp</string>
+    <string name="dbg_no_position">No position data available</string>
+    <string name="dbg_sensor_data">Sensor Data</string>
+    <string name="dbg_step_detected">Step Detected</string>
+    <string name="dbg_no_sensor">No sensor data available</string>
+    <string name="dbg_beacons_section">Beacons (%1$d)</string>
+    <string name="dbg_no_beacons">No beacons detected</string>
+    <string name="dbg_performance">Performance</string>
+    <string name="dbg_frame_rate">Frame Rate</string>
+    <string name="dbg_battery_drain">Battery Drain</string>
+    <string name="dbg_memory_usage">Memory Usage</string>
+    <string name="dbg_position_updates">Position Updates</string>
+    <string name="dbg_position_latency">Position Latency</string>
+    <string name="dbg_scan_frequency">Scan Frequency</string>
+    <string name="dbg_active_beacons">Active Beacons</string>
+    <string name="dbg_battery_impact">Battery Impact</string>
+    <string name="dbg_unknown">Unknown</string>
+    <string name="dbg_conf_short">Conf: %.2f</string>
+
+    <!-- BeaconHealthMonitor -->
+    <string name="beacon_health_monitor_title">Beacon Health Monitor</string>
+    <string name="beacon_active">Active</string>
+    <string name="beacon_warning">Warning</string>
+    <string name="beacon_critical">Critical</string>
+    <string name="total">Total</string>
+    <string name="alerts_count">Alerts (%1$d)</string>
+    <string name="beacon_label">Beacon</string>
+    <string name="health">Health</string>
+    <string name="last_seen">Last Seen</string>
+    <string name="never">Never</string>
+    <string name="battery_label">Battery:</string>
+
+    <!-- Wi-Fi Screen -->
+    <string name="wifi_networks">Wi-Fi Networks</string>
+    <string name="wifi_network_scanning">Scanning for networks...</string>
+    <string name="wifi_scanning">Scanning...</string>
+    <string name="wifi_refresh">Refresh</string>
+    <string name="wifi_networks_found">%1$d networks found</string>
+
+    <!-- Debug Screen -->
+    <string name="debug_tools">Debug Tools</string>
+    <string name="debug_realtime">Real-time</string>
+    <string name="debug_sensors">Sensors</string>
+    <string name="debug_logs">Logs</string>
+    <string name="debug_current_position">Current Position</string>
+    <string name="debug_system_status">System Status</string>
+    <string name="debug_ble_scanner">BLE Scanner</string>
+    <string name="debug_sensor_monitor">Sensor Monitor</string>
+    <string name="debug_position_updates">Position Updates</string>
+    <string name="debug_memory_usage">Memory Usage</string>
+    <string name="debug_battery_impact">Battery Impact</string>
+    <string name="debug_active">Active</string>
+    <string name="debug_inactive">Inactive</string>
+    <string name="debug_step_detection">Step Detection</string>
+    <string name="debug_heading">Heading</string>
+    <string name="debug_logging_enabled">Logging Enabled</string>
+    <string name="debug_logging_disabled">Logging Disabled</string>
+    <string name="debug_export_logs">Export Logs</string>
+    <string name="debug_clear_logs">Clear Logs</string>
+    <string name="debug_log_files">Log Files</string>
+    <string name="debug_log_statistics">Log Statistics</string>
+    <string name="debug_total_log_files">Total Log Files</string>
+    <string name="debug_total_size">Total Size</string>
+    <string name="debug_oldest_log">Oldest Log</string>
+    <string name="debug_newest_log">Newest Log</string>
+    <string name="debug_storage_available">Storage Available</string>
+    <string name="debug_sensor_data">Sensor Data</string>
+    <string name="debug_accelerometer">Accelerometer</string>
+    <string name="debug_gyroscope">Gyroscope</string>
+    <string name="debug_magnetometer">Magnetometer</string>
+    <string name="debug_logging_controls">Logging Controls</string>
+    <string name="debug_enable_data_logging">Enable Data Logging</string>
+    <string name="debug_new_session">New Session</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_language">Language</string>
+    <string name="settings_pdr">Pedestrian Dead Reckoning</string>
+    <string name="settings_sensor_fusion">Sensor Fusion</string>
+    <string name="settings_performance">Performance</string>
+    <string name="settings_data_management">Data Management</string>
+    <string name="settings_step_length">Step Length</string>
+    <string name="settings_step_length_desc">Your average step length for accurate tracking</string>
+    <string name="settings_fusion_weight">Fusion Weight</string>
+    <string name="settings_fusion_weight_desc">Balance between Wi-Fi and SLAM positioning</string>
+    <string name="settings_fusion_method">Fusion Method</string>
+    <string name="settings_fusion_method_desc">Choose the algorithm for combining sensor data</string>
+    <string name="settings_initial_fix_mode">Initial Fix Mode</string>
+    <string name="settings_initial_fix_mode_desc">How to determine the first position: AUTO uses Wi‑Fi automatically, MANUAL waits for user set, TEMPORARY sets (0,0) after timeout</string>
+    <string name="settings_sensor_monitoring_delay">Sensor Monitoring Delay</string>
+    <string name="settings_sensor_monitoring_delay_desc">Adjust the delay between sensor readings to reduce battery usage and heat generation</string>
+    <string name="settings_accelerometer_delay">Accelerometer Delay</string>
+    <string name="settings_accelerometer_delay_desc">Delay for accelerometer sensor readings (20-500ms)</string>
+    <string name="settings_gyroscope_delay">Gyroscope Delay</string>
+    <string name="settings_gyroscope_delay_desc">Delay for gyroscope sensor readings (20-500ms)</string>
+    <string name="settings_magnetometer_delay">Magnetometer Delay</string>
+    <string name="settings_magnetometer_delay_desc">Delay for magnetometer sensor readings (50-1000ms)</string>
+    <string name="settings_linear_acceleration_delay">Linear Acceleration Delay</string>
+    <string name="settings_linear_acceleration_delay_desc">Delay for linear acceleration sensor readings (20-500ms)</string>
+    <string name="settings_gravity_delay">Gravity Delay</string>
+    <string name="settings_gravity_delay_desc">Delay for gravity sensor readings (100-2000ms)</string>
+    <string name="settings_debug_mode">Debug Mode</string>
+    <string name="settings_debug_mode_desc">Enable detailed logging and debug information</string>
+    <string name="settings_data_logging">Data Logging</string>
+    <string name="settings_data_logging_desc">Log sensor data for analysis and debugging</string>
+    <string name="settings_low_power_mode">Low Power Mode</string>
+    <string name="settings_low_power_mode_desc">Reduce battery usage with optimized scanning</string>
+    <string name="settings_export_settings">Export Settings</string>
+    <string name="settings_export_settings_desc">Save your current settings to a file</string>
+    <string name="settings_import_settings">Import Settings</string>
+    <string name="settings_import_settings_desc">Load settings from a previously exported file</string>
+
+    <!-- Logging messages (used with Timber) -->
+    <string name="log_power_mode_changed">Power mode changed: lowPowerMode=%1$b, factor=%2$.2f</string>
+    <string name="log_sensor_monitor_on_resume">SensorMonitor: onResume</string>
+    <string name="log_sensor_monitor_on_pause">SensorMonitor: onPause</string>
+    <string name="log_sensor_monitor_on_destroy">SensorMonitor: onDestroy</string>
+    <string name="log_monitoring_in_progress">Sensor monitoring already in progress</string>
+    <string name="log_starting_sensor_monitoring">Starting sensor monitoring</string>
+    <string name="log_loaded_sensor_delays">Loaded sensor delays: accelerometer=%1$dms, gyroscope=%2$dms, magnetometer=%3$dms, linearAcceleration=%4$dms, gravity=%5$dms</string>
+    <string name="log_emulator_detected">Emulator detected; skipping sensor registration and using fallback data</string>
+    <string name="log_sensor_availability">Sensor availability: accelerometer=%1$b, gyroscope=%2$b, magnetometer=%3$b, linearAcceleration=%4$b, gravity=%5$b</string>
+    <string name="log_accelerometer_not_available">Accelerometer not available.</string>
+    <string name="log_gyroscope_not_available">Gyroscope not available.</string>
+    <string name="log_magnetometer_not_available">Magnetometer not available.</string>
+    <string name="log_monitoring_started">Sensor monitoring started successfully. Monitoring: %1$b</string>
+    <string name="log_error_starting_monitoring">Error starting sensor monitoring</string>
+    <string name="log_adjusted_sampling_rates">Adjusted sampling rates for delay %1$dms: high=%2$dus, normal=%3$dus, low=%4$dus, veryLow=%5$dus</string>
+    <string name="log_stopping_sensor_monitoring">Stopping sensor monitoring</string>
+    <string name="log_registering_sensors">Registering sensors with individual delays</string>
+    <string name="log_accelerometer_registered">Accelerometer registered successfully with %1$dms delay</string>
+    <string name="log_failed_register_accelerometer">Failed to register accelerometer</string>
+    <string name="log_accelerometer_still_failing">Accelerometer registration still failing; suppressing repeated error logs</string>
+    <string name="log_gyroscope_registered">Gyroscope registered successfully with %1$dms delay</string>
+    <string name="log_failed_register_gyroscope">Failed to register gyroscope</string>
+    <string name="log_gyroscope_still_failing">Gyroscope registration still failing; suppressing repeated error logs</string>
+    <string name="log_magnetometer_registered">Magnetometer registered successfully with %1$dms delay</string>
+    <string name="log_failed_register_magnetometer">Failed to register magnetometer</string>
+    <string name="log_magnetometer_still_failing">Magnetometer registration still failing; suppressing repeated error logs</string>
+    <string name="log_linear_acceleration_registered">Linear acceleration registered successfully with %1$dms delay</string>
+    <string name="log_failed_register_linear_acceleration">Failed to register linear acceleration</string>
+    <string name="log_linear_acceleration_still_failing">Linear acceleration registration still failing; suppressing repeated error logs</string>
+    <string name="log_gravity_registered">Gravity registered successfully with %1$dms delay</string>
+    <string name="log_failed_register_gravity">Failed to register gravity</string>
+    <string name="log_gravity_still_failing">Gravity registration still failing; suppressing repeated error logs</string>
+    <string name="log_accelerometer_sensor_not_available">Accelerometer sensor not available</string>
+    <string name="log_gyroscope_sensor_not_available">Gyroscope sensor not available</string>
+    <string name="log_magnetometer_sensor_not_available">Magnetometer sensor not available</string>
+    <string name="log_linear_acceleration_sensor_not_available">Linear acceleration sensor not available</string>
+    <string name="log_gravity_sensor_not_available">Gravity sensor not available</string>
+    <string name="log_sensor_registration_complete">Sensor registration complete. Registered %1$d sensors</string>
+    <string name="log_static_listener_added">Static state listener added, total listeners: %1$d</string>
+    <string name="log_static_listener_removed">Static state listener removed, remaining listeners: %1$d</string>
+    <string name="log_error_notifying_static_listener">Error notifying static state listener: %1$s</string>
+    <string name="log_forced_sampling_rate">Forced sampling rate change to %1$dus</string>
+    <string name="log_adjust_sampling_rate">Adjusting sampling rate from %1$dus to %2$dus (static: %3$b, longStatic: %4$b, lowPowerMode: %5$b)</string>
+    <string name="log_sensor_data_received">Sensor data received: %1$s (%2$d) - values: [%3$s]</string>
+    <string name="log_using_fallback_for">Using fallback data for: %1$s</string>
+    <string name="log_static_state_changed">Static state changed: static=%1$b, longStatic=%2$b, confidence=%3$.2f, duration=%4$ds</string>
+    <string name="log_device_position">Device position: %1$s, confidence: %2$.2f</string>
+
+    <!-- ARCore / App logs -->
+    <string name="log_arcore_install_failed">ARCore installation request failed</string>
+    <string name="log_arcore_create_session_failed">Failed to create ARCore session</string>
+    <string name="log_arcore_create_session_still_failing">ARCore session creation still failing; backing off further attempts</string>
+    <string name="log_camera_not_available">Camera not available, failed to resume ARCore session</string>
+    <string name="log_arcore_not_supported">ARCore not supported or not installed; running without ARCore</string>
+    <string name="log_arcore_session_paused">ARCore session is paused, skipping frame update</string>
+    <string name="log_error_updating_arcore">Error updating ARCore session</string>
+    <string name="log_device_long_static">Device in long static state, using reduced processing rate</string>
+    <string name="log_device_static">Device static, using medium processing rate</string>
+    <string name="log_device_moving">Device moving, using normal processing rate</string>
+    <string name="log_timber_initialized">Timber initialized with DebugTree and FileLoggingTree</string>
+    <string name="log_device_info">Device: %1$s %2$s, Android %3$s</string>
+    <string name="log_error_init_file_logging">Error initializing file logging</string>
+    <string name="log_version_checker_ready">Version checker initialized and update check scheduled</string>
+    <string name="log_applied_app_language">Applied app language at startup: %1$s</string>
+    <string name="log_failed_apply_language">Failed to apply app language at startup</string>
+    <string name="log_checking_updates">Checking for updates...</string>
+    <string name="log_update_available">Update available: Current=%1$s, Latest=%2$s</string>
+    <string name="log_app_up_to_date">App is up to date</string>
+    <string name="log_error_checking_updates">Error checking for updates: %1$s</string>
+    <string name="log_exception_checking_updates">Exception while checking for updates</string>
 </resources>

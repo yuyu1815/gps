@@ -1,0 +1,300 @@
+<resources>
+    <string name="app_name">屋内測位</string>
+    <!-- Navigation -->
+    <string name="nav_map">マップ</string>
+    <string name="nav_settings">設定</string>
+    <string name="nav_debug">デバッグ</string>
+
+    <!-- Common -->
+    <string name="back">戻る</string>
+    <string name="settings_title">設定</string>
+    <string name="reset_to_defaults">初期設定にリセット</string>
+
+    <!-- Language -->
+    <string name="language_section">言語</string>
+    <string name="app_language">アプリの言語</string>
+    <string name="system_default">システム設定に従う</string>
+    <string name="english">英語</string>
+    <string name="japanese">日本語</string>
+
+    <!-- Settings sections -->
+    <string name="settings_section_ble">BLE 設定</string>
+    <string name="settings_section_pdr">歩行者推定（PDR）</string>
+    <string name="settings_section_fusion">センサーフュージョン</string>
+    <string name="settings_section_wifi">Wi‑Fi 設定</string>
+    <string name="settings_section_power">省電力</string>
+    <string name="settings_section_debug">デバッグオプション</string>
+    <string name="settings_section_config">設定の管理</string>
+
+    <!-- Setting items -->
+    <string name="ble_enabled">BLE 有効</string>
+    <string name="ble_scan_interval">BLE スキャン間隔</string>
+    <string name="environmental_factor">環境係数</string>
+    <string name="beacon_staleness_timeout">ビーコン期限切れタイムアウト</string>
+    <string name="step_length">歩幅</string>
+    <string name="ble_pdr_weight">BLE/PDR 重み</string>
+    <string name="fusion_method">融合手法</string>
+    <string name="wifi_enabled">Wi‑Fi 有効</string>
+    <string name="scan_wifi_access_points">Wi‑Fi アクセスポイントをスキャン</string>
+    <string name="scan">スキャン</string>
+    <string name="hidden_ssid">&lt;非公開&gt;</string>
+    <string name="low_power_mode">低電力モード</string>
+    <string name="auto_enable_battery_level">バッテリー残量で自動有効化</string>
+    <string name="sampling_rate_reduction">サンプリングレート低減</string>
+    <string name="reduction_hint">値を大きくすると電池を節約できますが、測位精度が低下する可能性があります。</string>
+    <string name="debug_mode">デバッグモード</string>
+    <string name="data_logging">データログ</string>
+    <string name="export_import_desc">アプリ設定のエクスポート/インポート</string>
+    <string name="export_settings">設定をエクスポート</string>
+    <string name="import_settings">設定をインポート</string>
+
+    <!-- Units / formats -->
+    <string name="ms_unit">%1$d ms</string>
+    <string name="cm_unit">%1$.1f cm</string>
+    <string name="percent_unit">%1$d%%</string>
+    <string name="dbm_unit">%1$d dBm</string>
+    <string name="multx_unit">%1$.1fx</string>
+
+    <!-- Home/Map & Debug overlay -->
+    <string name="map_title">屋内測位マップ</string>
+    <string name="position_label">位置:</string>
+    <string name="confidence_label">信頼度:</string>
+    <string name="beacons_label">ビーコン:</string>
+    <string name="path_label">軌跡:</string>
+    <string name="debug_overlay_label">デバッグオーバーレイ:</string>
+
+    <!-- Buttons / controls on map -->
+    <string name="btn_show">表示</string>
+    <string name="btn_hide">非表示</string>
+    <string name="cd_settings">設定</string>
+    <string name="cd_zoom_in">拡大</string>
+    <string name="cd_zoom_out">縮小</string>
+    <string name="cd_center_on_me">現在地へセンタリング</string>
+    <string name="sd_center_on_me">ズームをリセットし現在位置へセンタリングします</string>
+    <string name="cd_show_beacons">ビーコンを表示</string>
+    <string name="cd_show_path">軌跡を表示</string>
+    <string name="cd_show_debug_overlay">デバッグオーバーレイを表示</string>
+    <string name="map_semantics">ユーザー位置を含む屋内地図</string>
+
+    <!-- Debug overlay sections & labels -->
+    <string name="dbg_overlay_title">デバッグオーバーレイ</string>
+    <string name="dbg_wifi">Wi‑Fi データ</string>
+    <string name="dbg_signal_strength">信号強度</string>
+    <string name="dbg_access_points">アクセスポイント</string>
+    <string name="dbg_position_accuracy">位置精度</string>
+    <string name="dbg_slam">SLAM データ</string>
+    <string name="dbg_status">状態</string>
+    <string name="dbg_feature_count">特徴点数</string>
+    <string name="dbg_confidence">信頼度</string>
+    <string name="dbg_pdr">PDR データ</string>
+    <string name="dbg_step_count">歩数</string>
+    <string name="dbg_heading">方位</string>
+    <string name="dbg_step_length">歩幅</string>
+    <string name="dbg_sensor_fusion">センサーフュージョン</string>
+    <string name="dbg_method">手法</string>
+    <string name="dbg_error">誤差</string>
+    <string name="dbg_device_sensors">デバイスセンサー</string>
+    <string name="dbg_accelerometer">加速度計</string>
+    <string name="dbg_gyroscope">ジャイロスコープ</string>
+    <string name="dbg_magnetometer">磁力計</string>
+    <string name="dbg_system_status">システム状態</string>
+    <string name="dbg_battery_usage">電池使用率</string>
+    <string name="dbg_cpu_usage">CPU 使用率</string>
+    <string name="dbg_update_rate">更新レート</string>
+
+    <!-- Component: DebugOverlay (component/DebugOverlay.kt) -->
+    <string name="dbg_info_title">デバッグ情報</string>
+    <string name="dbg_positioning">測位</string>
+    <string name="dbg_position">位置</string>
+    <string name="dbg_accuracy">精度</string>
+    <string name="dbg_source">ソース</string>
+    <string name="dbg_timestamp">タイムスタンプ</string>
+    <string name="dbg_no_position">位置情報がありません</string>
+    <string name="dbg_sensor_data">センサーデータ</string>
+    <string name="dbg_step_detected">ステップ検出</string>
+    <string name="dbg_no_sensor">センサーデータがありません</string>
+    <string name="dbg_beacons_section">ビーコン（%1$d）</string>
+    <string name="dbg_no_beacons">ビーコンが見つかりません</string>
+    <string name="dbg_performance">パフォーマンス</string>
+    <string name="dbg_frame_rate">フレームレート</string>
+    <string name="dbg_battery_drain">電池消費</string>
+    <string name="dbg_memory_usage">メモリ使用量</string>
+    <string name="dbg_position_updates">位置更新</string>
+    <string name="dbg_position_latency">位置遅延</string>
+    <string name="dbg_scan_frequency">スキャン頻度</string>
+    <string name="dbg_active_beacons">有効ビーコン数</string>
+    <string name="dbg_battery_impact">電池への影響</string>
+    <string name="dbg_unknown">不明</string>
+    <string name="dbg_conf_short">信頼度: %.2f</string>
+
+    <!-- BeaconHealthMonitor -->
+    <string name="beacon_health_monitor_title">ビーコン健全性モニター</string>
+    <string name="beacon_active">正常</string>
+    <string name="beacon_warning">警告</string>
+    <string name="beacon_critical">危険</string>
+    <string name="total">合計</string>
+    <string name="alerts_count">アラート（%1$d）</string>
+    <string name="beacon_label">ビーコン</string>
+    <string name="health">ヘルス</string>
+    <string name="last_seen">最終検出</string>
+    <string name="never">未検出</string>
+    <string name="battery_label">バッテリー:</string>
+
+    <!-- Wi-Fi Screen -->
+    <string name="wifi_networks">Wi-Fiネットワーク</string>
+    <string name="wifi_network_scanning">ネットワークをスキャン中...</string>
+    <string name="wifi_scanning">スキャン中...</string>
+    <string name="wifi_refresh">更新</string>
+    <string name="wifi_networks_found">%1$d個のネットワークが見つかりました</string>
+
+    <!-- Debug Screen -->
+    <string name="debug_tools">デバッグツール</string>
+    <string name="debug_realtime">リアルタイム</string>
+    <string name="debug_sensors">センサー</string>
+    <string name="debug_logs">ログ</string>
+    <string name="debug_current_position">現在位置</string>
+    <string name="debug_system_status">システム状態</string>
+    <string name="debug_ble_scanner">BLE スキャナー</string>
+    <string name="debug_sensor_monitor">センサーモニター</string>
+    <string name="debug_position_updates">位置更新</string>
+    <string name="debug_memory_usage">メモリ使用量</string>
+    <string name="debug_battery_impact">電池への影響</string>
+    <string name="debug_active">アクティブ</string>
+    <string name="debug_inactive">非アクティブ</string>
+    <string name="debug_step_detection">ステップ検出</string>
+    <string name="debug_heading">方位</string>
+    <string name="debug_logging_enabled">ログ記録有効</string>
+    <string name="debug_logging_disabled">ログ記録無効</string>
+    <string name="debug_export_logs">ログエクスポート</string>
+    <string name="debug_clear_logs">ログクリア</string>
+    <string name="debug_log_files">ログファイル</string>
+    <string name="debug_log_statistics">ログ統計</string>
+    <string name="debug_total_log_files">ログファイル総数</string>
+    <string name="debug_total_size">総サイズ</string>
+    <string name="debug_oldest_log">最古のログ</string>
+    <string name="debug_newest_log">最新のログ</string>
+    <string name="debug_storage_available">利用可能なストレージ</string>
+    <string name="debug_sensor_data">センサーデータ</string>
+    <string name="debug_accelerometer">加速度計</string>
+    <string name="debug_gyroscope">ジャイロスコープ</string>
+    <string name="debug_magnetometer">磁力計</string>
+    <string name="debug_logging_controls">ログ制御</string>
+    <string name="debug_enable_data_logging">データログを有効にする</string>
+    <string name="debug_new_session">新しいセッション</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_language">言語</string>
+    <string name="settings_pdr">歩行者推定（PDR）</string>
+    <string name="settings_sensor_fusion">センサーフュージョン</string>
+    <string name="settings_performance">パフォーマンス</string>
+    <string name="settings_data_management">データ管理</string>
+    <string name="settings_step_length">歩幅</string>
+    <string name="settings_step_length_desc">正確な追跡のための平均歩幅</string>
+    <string name="settings_fusion_weight">融合重み</string>
+    <string name="settings_fusion_weight_desc">Wi‑FiとSLAM測位のバランス</string>
+    <string name="settings_fusion_method">融合手法</string>
+    <string name="settings_fusion_method_desc">センサーデータを組み合わせるアルゴリズムを選択</string>
+    <string name="settings_initial_fix_mode">初期位置の確定方法</string>
+    <string name="settings_initial_fix_mode_desc">初回位置の決め方を選択: AUTOはWi‑Fiで自動、MANUALはユーザー操作を待機、TEMPORARYはタイムアウトで(0,0)を暫定設定</string>
+    <string name="settings_sensor_monitoring_delay">センサー監視遅延</string>
+    <string name="settings_sensor_monitoring_delay_desc">センサー読み取り間の遅延を調整してバッテリー使用量と発熱を削減</string>
+    <string name="settings_accelerometer_delay">加速度センサー遅延</string>
+    <string name="settings_accelerometer_delay_desc">加速度センサーの読み取り遅延（20-500ms）</string>
+    <string name="settings_gyroscope_delay">ジャイロスコープ遅延</string>
+    <string name="settings_gyroscope_delay_desc">ジャイロスコープセンサーの読み取り遅延（20-500ms）</string>
+    <string name="settings_magnetometer_delay">磁力計遅延</string>
+    <string name="settings_magnetometer_delay_desc">磁力計センサーの読み取り遅延（50-1000ms）</string>
+    <string name="settings_linear_acceleration_delay">線形加速度遅延</string>
+    <string name="settings_linear_acceleration_delay_desc">線形加速度センサーの読み取り遅延（20-500ms）</string>
+    <string name="settings_gravity_delay">重力遅延</string>
+    <string name="settings_gravity_delay_desc">重力センサーの読み取り遅延（100-2000ms）</string>
+    <string name="settings_debug_mode">デバッグモード</string>
+    <string name="settings_debug_mode_desc">詳細なログとデバッグ情報を有効にする</string>
+    <string name="settings_data_logging">データログ</string>
+    <string name="settings_data_logging_desc">分析とデバッグのためのセンサーデータをログに記録</string>
+    <string name="settings_low_power_mode">低電力モード</string>
+    <string name="settings_low_power_mode_desc">最適化されたスキャンで電池使用量を削減</string>
+    <string name="settings_export_settings">設定をエクスポート</string>
+    <string name="settings_export_settings_desc">現在の設定をファイルに保存</string>
+    <string name="settings_import_settings">設定をインポート</string>
+    <string name="settings_import_settings_desc">以前にエクスポートしたファイルから設定を読み込み</string>
+
+    <!-- Logging messages (used with Timber) -->
+    <string name="log_power_mode_changed">電源モードが変更されました: 低電力モード=%1$b, 係数=%2$.2f</string>
+    <string name="log_sensor_monitor_on_resume">SensorMonitor: onResume</string>
+    <string name="log_sensor_monitor_on_pause">SensorMonitor: onPause</string>
+    <string name="log_sensor_monitor_on_destroy">SensorMonitor: onDestroy</string>
+    <string name="log_monitoring_in_progress">センサー監視はすでに進行中です</string>
+    <string name="log_starting_sensor_monitoring">センサー監視を開始</string>
+    <string name="log_loaded_sensor_delays">センサー遅延を読み込みました: 加速度計=%1$dms, ジャイロ=%2$dms, 磁力計=%3$dms, 線形加速度=%4$dms, 重力=%5$dms</string>
+    <string name="log_emulator_detected">エミュレーターを検出。センサー登録をスキップしフォールバックデータを使用します</string>
+    <string name="log_sensor_availability">センサー利用可否: 加速度計=%1$b, ジャイロ=%2$b, 磁力計=%3$b, 線形加速度=%4$b, 重力=%5$b</string>
+    <string name="log_accelerometer_not_available">加速度計は利用できません。</string>
+    <string name="log_gyroscope_not_available">ジャイロスコープは利用できません。</string>
+    <string name="log_magnetometer_not_available">磁力計は利用できません。</string>
+    <string name="log_monitoring_started">センサー監視を開始しました。監視中: %1$b</string>
+    <string name="log_error_starting_monitoring">センサー監視の開始に失敗しました</string>
+    <string name="log_adjusted_sampling_rates">遅延 %1$dms に合わせてサンプリングレートを調整: 高=%2$dus, 通常=%3$dus, 低=%4$dus, 最低=%5$dus</string>
+    <string name="log_stopping_sensor_monitoring">センサー監視を停止</string>
+    <string name="log_registering_sensors">個別の遅延でセンサーを登録</string>
+    <string name="log_accelerometer_registered">加速度計を %1$dms の遅延で登録しました</string>
+    <string name="log_failed_register_accelerometer">加速度計の登録に失敗</string>
+    <string name="log_accelerometer_still_failing">加速度計の登録に引き続き失敗。重複ログを抑制</string>
+    <string name="log_gyroscope_registered">ジャイロスコープを %1$dms の遅延で登録しました</string>
+    <string name="log_failed_register_gyroscope">ジャイロスコープの登録に失敗</string>
+    <string name="log_gyroscope_still_failing">ジャイロスコープの登録に引き続き失敗。重複ログを抑制</string>
+    <string name="log_magnetometer_registered">磁力計を %1$dms の遅延で登録しました</string>
+    <string name="log_failed_register_magnetometer">磁力計の登録に失敗</string>
+    <string name="log_magnetometer_still_failing">磁力計の登録に引き続き失敗。重複ログを抑制</string>
+    <string name="log_linear_acceleration_registered">線形加速度を %1$dms の遅延で登録しました</string>
+    <string name="log_failed_register_linear_acceleration">線形加速度の登録に失敗</string>
+    <string name="log_linear_acceleration_still_failing">線形加速度の登録に引き続き失敗。重複ログを抑制</string>
+    <string name="log_gravity_registered">重力を %1$dms の遅延で登録しました</string>
+    <string name="log_failed_register_gravity">重力の登録に失敗</string>
+    <string name="log_gravity_still_failing">重力の登録に引き続き失敗。重複ログを抑制</string>
+    <string name="log_accelerometer_sensor_not_available">加速度センサーが利用できません</string>
+    <string name="log_gyroscope_sensor_not_available">ジャイロセンサーが利用できません</string>
+    <string name="log_magnetometer_sensor_not_available">磁力計センサーが利用できません</string>
+    <string name="log_linear_acceleration_sensor_not_available">線形加速度センサーが利用できません</string>
+    <string name="log_gravity_sensor_not_available">重力センサーが利用できません</string>
+    <string name="log_sensor_registration_complete">センサー登録が完了しました。登録数: %1$d</string>
+    <string name="log_static_listener_added">静的状態リスナーを追加、合計: %1$d</string>
+    <string name="log_static_listener_removed">静的状態リスナーを削除、残り: %1$d</string>
+    <string name="log_error_notifying_static_listener">静的状態リスナー通知エラー: %1$s</string>
+    <string name="log_forced_sampling_rate">サンプリングレートを %1$dus に強制変更</string>
+    <string name="log_adjust_sampling_rate">サンプリングレートを %1$dus から %2$dus に調整 (静的: %3$b, 長時間静的: %4$b, 低電力: %5$b)</string>
+    <string name="log_sensor_data_received">センサーデータ受信: %1$s (%2$d) - 値: [%3$s]</string>
+    <string name="log_using_fallback_for">フォールバックデータを使用: %1$s</string>
+    <string name="log_static_state_changed">静的状態が変化: 静的=%1$b, 長時間静的=%2$b, 信頼度=%3$.2f, 期間=%4$ds</string>
+    <string name="log_device_position">デバイス位置: %1$s, 信頼度: %2$.2f</string>
+
+    <!-- ARCore / App logs -->
+    <string name="log_arcore_install_failed">ARCore のインストール要求に失敗</string>
+    <string name="log_arcore_create_session_failed">ARCore セッションの作成に失敗</string>
+    <string name="log_arcore_create_session_still_failing">ARCore セッション作成に引き続き失敗。バックオフ継続</string>
+    <string name="log_camera_not_available">カメラを利用できず、ARCore セッションの再開に失敗</string>
+    <string name="log_arcore_not_supported">ARCore が未対応または未インストールのため、ARCore なしで動作</string>
+    <string name="log_arcore_session_paused">ARCore セッションが一時停止中のため、フレーム更新をスキップ</string>
+    <string name="log_error_updating_arcore">ARCore セッション更新エラー</string>
+    <string name="log_device_long_static">長時間静的のため処理レートを低減</string>
+    <string name="log_device_static">静的のため中程度の処理レートを使用</string>
+    <string name="log_device_moving">移動中のため通常の処理レートを使用</string>
+    <string name="log_timber_initialized">Timber を DebugTree と FileLoggingTree で初期化しました</string>
+    <string name="log_device_info">デバイス: %1$s %2$s, Android %3$s</string>
+    <string name="log_error_init_file_logging">ファイルロギング初期化エラー</string>
+    <string name="log_version_checker_ready">バージョンチェッカーを初期化し更新確認をスケジュール</string>
+    <string name="log_applied_app_language">起動時にアプリ言語を適用: %1$s</string>
+    <string name="log_failed_apply_language">起動時の言語適用に失敗</string>
+    <string name="log_checking_updates">更新を確認中...</string>
+    <string name="log_update_available">アップデートあり: 現在=%1$s, 最新=%2$s</string>
+    <string name="log_app_up_to_date">最新の状態です</string>
+    <string name="log_error_checking_updates">更新確認中のエラー: %1$s</string>
+    <string name="log_exception_checking_updates">更新確認中に例外が発生</string>
+    <string name="copy">コピー</string>
+    <string name="init_logs_title">初期化ログ</string>
+    <string name="filter_init_only">初期化関連のみフィルタ</string>
+    <string name="no_log_files_found">ログファイルが見つかりませんでした</string>
+    <string name="copied_to_clipboard">クリップボードにコピーしました</string>
+</resources>
+
+

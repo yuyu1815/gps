@@ -2,7 +2,7 @@ package com.example.myapplication.domain.model
 
 /**
  * Represents an indoor map in the positioning system.
- * Contains information about the map dimensions, scale, and associated beacons.
+ * Contains information about the map dimensions, scale, and associated elements.
  */
 data class IndoorMap(
     /**
@@ -36,11 +36,6 @@ data class IndoorMap(
     val imagePath: String,
     
     /**
-     * List of beacons associated with this map.
-     */
-    val beacons: List<Beacon> = emptyList(),
-    
-    /**
      * List of walls or obstacles on the map.
      * Each wall is represented as a line segment with start and end points.
      */
@@ -70,39 +65,6 @@ data class IndoorMap(
      */
     fun isWithinBounds(x: Float, y: Float): Boolean {
         return x >= 0 && x <= widthMeters && y >= 0 && y <= heightMeters
-    }
-    
-    /**
-     * Gets the nearest beacon to a given position.
-     */
-    fun getNearestBeacon(x: Float, y: Float): Beacon? {
-        if (beacons.isEmpty()) return null
-        
-        return beacons.minByOrNull { beacon ->
-            val dx = beacon.x - x
-            val dy = beacon.y - y
-            dx * dx + dy * dy  // Square of distance
-        }
-    }
-    
-    /**
-     * Gets beacons within a specified radius from a position.
-     */
-    fun getBeaconsInRadius(x: Float, y: Float, radiusMeters: Float): List<Beacon> {
-        val radiusSquared = radiusMeters * radiusMeters
-        
-        return beacons.filter { beacon ->
-            val dx = beacon.x - x
-            val dy = beacon.y - y
-            (dx * dx + dy * dy) <= radiusSquared
-        }
-    }
-    
-    /**
-     * Gets a point of interest by its ID.
-     */
-    fun getPointOfInterest(id: String): PointOfInterest? {
-        return pointsOfInterest.find { it.id == id }
     }
 }
 

@@ -1,6 +1,5 @@
 package com.example.myapplication.data.parser
 
-import com.example.myapplication.domain.model.Beacon
 import com.example.myapplication.domain.model.IndoorMap
 import com.example.myapplication.domain.model.PointOfInterest
 import com.example.myapplication.domain.model.Wall
@@ -10,7 +9,7 @@ import timber.log.Timber
 import java.io.File
 
 /**
- * A dedicated JSON parser for map and beacon configurations.
+ * A dedicated JSON parser for map configurations.
  * Provides methods to parse JSON files into model objects and convert model objects to JSON.
  */
 class ConfigurationJsonParser {
@@ -67,56 +66,6 @@ class ConfigurationJsonParser {
             return true
         } catch (e: Exception) {
             Timber.e(e, "Error saving map to JSON: $filePath")
-            return false
-        }
-    }
-    
-    /**
-     * Parses a JSON file into a list of Beacon objects.
-     *
-     * @param filePath The path to the JSON file
-     * @return The parsed list of Beacon objects, or an empty list if parsing failed
-     */
-    fun parseBeaconsFromJson(filePath: String): List<Beacon> {
-        try {
-            val file = File(filePath)
-            if (!file.exists()) {
-                Timber.e("Beacons file not found: $filePath")
-                return emptyList()
-            }
-            
-            val json = file.readText()
-            val type = com.squareup.moshi.Types.newParameterizedType(List::class.java, Beacon::class.java)
-            val adapter = moshi.adapter<List<Beacon>>(type)
-            val beacons = adapter.fromJson(json) ?: emptyList()
-            
-            Timber.d("Parsed ${beacons.size} beacons from JSON: $filePath")
-            return beacons
-        } catch (e: Exception) {
-            Timber.e(e, "Error parsing beacons from JSON: $filePath")
-            return emptyList()
-        }
-    }
-    
-    /**
-     * Converts a list of Beacon objects to JSON and saves it to a file.
-     *
-     * @param beacons The list of Beacon objects to convert
-     * @param filePath The path where the JSON file will be saved
-     * @return true if the operation was successful, false otherwise
-     */
-    fun saveBeaconsToJson(beacons: List<Beacon>, filePath: String): Boolean {
-        try {
-            val file = File(filePath)
-            val type = com.squareup.moshi.Types.newParameterizedType(List::class.java, Beacon::class.java)
-            val adapter = moshi.adapter<List<Beacon>>(type)
-            val json = adapter.toJson(beacons)
-            
-            file.writeText(json)
-            Timber.d("Saved ${beacons.size} beacons to JSON: $filePath")
-            return true
-        } catch (e: Exception) {
-            Timber.e(e, "Error saving beacons to JSON: $filePath")
             return false
         }
     }

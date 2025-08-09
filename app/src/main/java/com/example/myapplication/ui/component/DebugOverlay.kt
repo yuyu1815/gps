@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,7 +22,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.myapplication.domain.model.Beacon
 import com.example.myapplication.domain.model.SensorData
 import com.example.myapplication.domain.model.UserPosition
 import com.example.myapplication.domain.model.PositionSource
@@ -33,11 +32,10 @@ import java.util.Locale
 
 /**
  * A debug overlay that displays real-time data for debugging purposes.
- * This includes sensor data, positioning information, beacon details, and performance metrics.
+ * This includes sensor data, positioning information, and performance metrics.
  *
  * @param sensorData Current sensor data from device sensors
  * @param userPosition Current calculated user position
- * @param beacons List of detected beacons
  * @param performanceMetrics Current performance metrics (optional)
  * @param modifier Modifier for customizing the layout
  */
@@ -45,7 +43,6 @@ import java.util.Locale
 fun DebugOverlay(
     sensorData: SensorData.Combined?,
     userPosition: UserPosition?,
-    beacons: List<Beacon>,
     performanceMetrics: PerformanceMetricsCollector.PerformanceMetrics? = null,
     modifier: Modifier = Modifier
 ) {
@@ -66,7 +63,7 @@ fun DebugOverlay(
         ) {
             // Header
             Text(
-                text = "Debug Information",
+                text = androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_info_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -78,90 +75,59 @@ fun DebugOverlay(
                 fontFamily = FontFamily.Monospace
             )
             
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             
             // Positioning Information
-            SectionHeader("Positioning")
+            SectionHeader(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_positioning))
             
             userPosition?.let {
-                DataRow("Position", String.format("(%.2f, %.2f)", it.x, it.y))
-                DataRow("Accuracy", String.format("±%.2f m", it.accuracy))
-                DataRow("Source", it.source.name)
-                DataRow("Confidence", String.format("%.2f", it.confidence))
-                DataRow("Timestamp", SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date(it.timestamp)))
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_position), String.format("(%.2f, %.2f)", it.x, it.y))
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_accuracy), String.format("±%.2f m", it.accuracy))
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_source), it.source.name)
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_confidence), String.format("%.2f", it.confidence))
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_timestamp), SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date(it.timestamp)))
             } ?: Text(
-                text = "No position data available",
+                text = androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_no_position),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Red
             )
             
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             
             // Sensor Data
-            SectionHeader("Sensor Data")
+            SectionHeader(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_sensor_data))
             
             sensorData?.let {
-                DataRow("Accelerometer", String.format("(%.2f, %.2f, %.2f)", 
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_accelerometer), String.format("(%.2f, %.2f, %.2f)", 
                     it.accelerometer.x, it.accelerometer.y, it.accelerometer.z))
-                DataRow("Gyroscope", String.format("(%.2f, %.2f, %.2f)", 
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_gyroscope), String.format("(%.2f, %.2f, %.2f)", 
                     it.gyroscope.x, it.gyroscope.y, it.gyroscope.z))
-                DataRow("Magnetometer", String.format("(%.2f, %.2f, %.2f)", 
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_magnetometer), String.format("(%.2f, %.2f, %.2f)", 
                     it.magnetometer.x, it.magnetometer.y, it.magnetometer.z))
-                DataRow("Step Detected", it.stepDetected.toString())
-                DataRow("Step Length", String.format("%.2f cm", it.stepLength))
-                DataRow("Heading", String.format("%.1f°", it.heading))
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_step_detected), it.stepDetected.toString())
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_step_length), String.format("%.2f cm", it.stepLength))
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_heading), String.format("%.1f°", it.heading))
             } ?: Text(
-                text = "No sensor data available",
+                text = androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_no_sensor),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Red
             )
             
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-            
-            // Beacon Information
-            SectionHeader("Beacons (${beacons.size})")
-            
-            if (beacons.isNotEmpty()) {
-                // Sort beacons by filtered RSSI (strongest first)
-                val sortedBeacons = beacons.sortedByDescending { it.filteredRssi }
-                
-                // Show top 5 beacons
-                sortedBeacons.take(5).forEach { beacon ->
-                    BeaconDataRow(beacon)
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
-                
-                if (sortedBeacons.size > 5) {
-                    Text(
-                        text = "... and ${sortedBeacons.size - 5} more",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.alpha(0.7f)
-                    )
-                }
-            } else {
-                Text(
-                    text = "No beacons detected",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Red
-                )
-            }
-            
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             
             // Performance Metrics
-            SectionHeader("Performance")
+            SectionHeader(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_performance))
             
             performanceMetrics?.let {
-                DataRow("Frame Rate", String.format("%.1f fps", it.frameRate))
-                DataRow("Battery Drain", String.format("%.2f%%/hr", it.batteryDrainRate))
-                DataRow("Memory Usage", formatMemorySize(it.memoryUsage))
-                DataRow("Position Updates", String.format("%.1f/sec", it.positionUpdateFrequency))
-                DataRow("Position Latency", String.format("%d ms", it.positioningLatency))
-                DataRow("Scan Frequency", String.format("%.1f/min", it.scanFrequency))
-                DataRow("Active Beacons", it.activeBeaconCount.toString())
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_frame_rate), String.format("%.1f fps", it.frameRate))
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_battery_drain), String.format("%.2f%%/hr", it.batteryDrainRate))
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_memory_usage), formatMemorySize(it.memoryUsage))
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_position_updates), String.format("%.1f/sec", it.positionUpdateFrequency))
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_position_latency), String.format("%d ms", it.positioningLatency))
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_scan_frequency), String.format("%.1f/min", it.scanFrequency))
             } ?: run {
-                DataRow("Frame Rate", "-- fps")
-                DataRow("Battery Impact", "Unknown")
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_frame_rate), "-- fps")
+                DataRow(androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_battery_impact), androidx.compose.ui.res.stringResource(id = com.example.myapplication.R.string.dbg_unknown))
             }
         }
     }
@@ -218,66 +184,5 @@ private fun formatMemorySize(bytes: Long): String {
         bytes < 1024 * 1024 -> String.format("%.1f KB", bytes / 1024.0)
         bytes < 1024 * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024.0))
         else -> String.format("%.2f GB", bytes / (1024.0 * 1024.0 * 1024.0))
-    }
-}
-
-/**
- * Displays beacon information in the debug overlay.
- */
-@Composable
-private fun BeaconDataRow(beacon: Beacon) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(4.dp)
-            )
-            .padding(4.dp)
-    ) {
-        // Beacon ID and RSSI
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = beacon.id.takeLast(8),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-                fontFamily = FontFamily.Monospace
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = "${beacon.filteredRssi} dBm",
-                style = MaterialTheme.typography.bodySmall,
-                color = when {
-                    beacon.filteredRssi > -70 -> Color.Green
-                    beacon.filteredRssi > -90 -> Color(0xFFFFA000) // Amber
-                    else -> Color.Red
-                }
-            )
-        }
-        
-        // Distance and confidence
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = String.format("%.2f m", beacon.estimatedDistance),
-                style = MaterialTheme.typography.bodySmall,
-                fontFamily = FontFamily.Monospace
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = String.format("Conf: %.2f", beacon.distanceConfidence),
-                style = MaterialTheme.typography.bodySmall,
-                color = when {
-                    beacon.distanceConfidence > 0.7 -> Color.Green
-                    beacon.distanceConfidence > 0.4 -> Color(0xFFFFA000) // Amber
-                    else -> Color.Red
-                }
-            )
-        }
     }
 }

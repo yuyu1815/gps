@@ -18,12 +18,12 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.pow
-import com.example.myapplication.domain.model.Beacon
 import com.example.myapplication.domain.model.CoordinateTransformer
 import com.example.myapplication.domain.model.IndoorMap
 import com.example.myapplication.domain.model.PointOfInterest
@@ -34,31 +34,24 @@ import timber.log.Timber
 import java.io.File
 
 /**
- * A composable function that renders an indoor map with beacons, points of interest, and user position.
+ * A composable function that renders an indoor map with points of interest and user position.
  *
  * @param map The indoor map to render
  * @param userPosition The current user position
- * @param selectedBeacon The currently selected beacon (if any)
  * @param selectedPoi The currently selected point of interest (if any)
- * @param showBeacons Whether to show beacons on the map
  * @param showPois Whether to show points of interest on the map
  * @param showUserPosition Whether to show the user's position on the map
  * @param onMapClick Callback for when the map is clicked
- * @param onBeaconClick Callback for when a beacon is clicked
  * @param onPoiClick Callback for when a point of interest is clicked
  */
 @Composable
 fun MapRenderer(
     map: IndoorMap,
     userPosition: UserPosition? = null,
-    selectedBeacon: Beacon? = null,
     selectedPoi: PointOfInterest? = null,
-    showBeacons: Boolean = true,
     showPois: Boolean = true,
     showUserPosition: Boolean = true,
-    showBeaconDebugInfo: Boolean = false,
     onMapClick: ((Float, Float) -> Unit)? = null,
-    onBeaconClick: ((Beacon) -> Unit)? = null,
     onPoiClick: ((PointOfInterest) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -158,18 +151,13 @@ fun MapRenderer(
                 // Draw map background
                 drawMapBackground(mapBitmap, scale, offsetX, offsetY)
                 
-                // Draw beacons
-                if (showBeacons) {
-                    drawBeacons(map.beacons, transformer, selectedBeacon, showBeaconDebugInfo)
-                }
-                
                 // Draw points of interest
                 if (showPois) {
                     drawPointsOfInterest(map.pointsOfInterest, transformer, selectedPoi)
                 }
                 
                 // Draw user position
-                if (showUserPosition && userPosition != null) {
+                 if (showUserPosition && userPosition != null) {
                     drawUserPosition(userPosition, transformer)
                 }
             }
@@ -201,107 +189,6 @@ private fun DrawScope.drawMapBackground(
                 drawImage(
                     image = bitmap.asImageBitmap(),
                     topLeft = Offset.Zero
-                )
-            }
-        }
-    }
-}
-
-/**
- * Draws beacons on the map with debugging information.
- */
-private fun DrawScope.drawBeacons(
-    beacons: List<Beacon>,
-    transformer: CoordinateTransformer,
-    selectedBeacon: Beacon?,
-    showDebugInfo: Boolean = true
-) {
-    beacons.forEach { beacon ->
-        val (screenX, screenY) = transformer.metersToScreen(beacon.x, beacon.y)
-        
-        // Draw beacon circle
-        val radius = 20f * transformer.getScaleFactor()
-        val color = if (beacon == selectedBeacon) Color.Red else Color.Blue
-        
-        // Draw signal strength indicator (outer ring) if debug info is enabled
-        if (showDebugInfo && beacon.filteredRssi != 0) {
-            // Convert RSSI to a visual indicator (larger circle for stronger signal)
-            // RSSI typically ranges from -100 (weak) to -30 (strong)
-            val signalStrength = ((beacon.filteredRssi + 100) / 70f).coerceIn(0f, 1f)
-            val signalRadius = radius * (1.5f + signalStrength * 1.5f)
-            
-            drawCircle(
-                color = color,
-                radius = signalRadius,
-                center = Offset(screenX, screenY),
-                alpha = 0.2f
-            )
-        }
-        
-        // Draw beacon circle
-        drawCircle(
-            color = color,
-            radius = radius,
-            center = Offset(screenX, screenY),
-            alpha = 0.7f
-        )
-        
-        // Draw beacon ID circle
-        drawCircle(
-            color = Color.White,
-            radius = radius * 0.7f,
-            center = Offset(screenX, screenY)
-        )
-        
-        // Enhanced visualization for debugging
-        if (showDebugInfo) {
-            // Draw connection lines between beacons for better visualization of placement
-            beacons.forEach { otherBeacon ->
-                if (otherBeacon != beacon) {
-                    val (x2, y2) = transformer.metersToScreen(otherBeacon.x, otherBeacon.y)
-                    
-                    // Draw connection line
-                    drawLine(
-                        color = Color.Gray,
-                        start = Offset(screenX, screenY),
-                        end = Offset(x2, y2),
-                        alpha = 0.3f,
-                        strokeWidth = 1f * transformer.getScaleFactor()
-                    )
-                }
-            }
-            
-            // Draw coverage area based on txPower
-            // Calculate theoretical maximum range based on txPower
-            val txPowerFactor = (beacon.txPower + 100) / 20.0
-            val maxRangeMeters = Math.pow(10.0, txPowerFactor).toFloat().coerceIn(1f, 30f)
-            val coverageRadius = maxRangeMeters * transformer.getScaleFactor()
-            
-            // Draw coverage boundary
-            drawCircle(
-                color = Color.Blue,
-                radius = coverageRadius,
-                center = Offset(screenX, screenY),
-                alpha = 0.1f
-            )
-            
-            // Draw confidence indicator if available
-            if (beacon.distanceConfidence > 0f) {
-                // Draw confidence ring with color based on confidence level
-                val confidenceColor = when {
-                    beacon.distanceConfidence > 0.7f -> Color.Green
-                    beacon.distanceConfidence > 0.4f -> Color.Yellow
-                    else -> Color.Red
-                }
-                
-                drawCircle(
-                    color = confidenceColor,
-                    radius = radius * 2.5f,
-                    center = Offset(screenX, screenY),
-                    alpha = 0.15f,
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(
-                        width = 2f * transformer.getScaleFactor()
-                    )
                 )
             }
         }
@@ -356,19 +243,37 @@ private fun DrawScope.drawUserPosition(
 ) {
     val (screenX, screenY) = transformer.metersToScreen(userPosition.x, userPosition.y)
     
-    // Draw accuracy circle
-    val accuracyRadius = userPosition.accuracy * transformer.getScaleFactor() * transformer.getScaleFactor()
-    drawCircle(
-        color = Color.Blue,
-        radius = accuracyRadius,
-        center = Offset(screenX, screenY),
-        alpha = 0.2f
-    )
+    // Draw uncertainty ellipse if sigmaX/Y available, otherwise fallback to circle by accuracy
+    val scaleFactor = transformer.getScaleFactor()
+    val sigmaX = userPosition.sigmaX?.times(scaleFactor)
+    val sigmaY = userPosition.sigmaY?.times(scaleFactor)
+    val sigmaThetaDeg = userPosition.sigmaTheta?.times(180f / Math.PI.toFloat()) ?: 0f
+    if (sigmaX != null && sigmaY != null && sigmaX.isFinite() && sigmaY.isFinite()) {
+        // 1-sigma ellipse; visually scale slightly
+        val rx = (sigmaX * 2f).coerceAtMost(size.minDimension * 0.45f)
+        val ry = (sigmaY * 2f).coerceAtMost(size.minDimension * 0.45f)
+        rotate(degrees = sigmaThetaDeg, pivot = Offset(screenX, screenY)) {
+            drawOval(
+                color = Color(0xFF1565C0),
+                topLeft = Offset(screenX - rx, screenY - ry),
+                size = androidx.compose.ui.geometry.Size(rx * 2, ry * 2),
+                alpha = 0.18f
+            )
+        }
+    } else {
+        val accuracyRadius = (userPosition.accuracy * scaleFactor).coerceAtMost(size.minDimension * 0.45f)
+        drawCircle(
+            color = Color(0xFF1565C0),
+            radius = accuracyRadius,
+            center = Offset(screenX, screenY),
+            alpha = 0.18f
+        )
+    }
     
     // Draw user position
     val positionRadius = 25f * transformer.getScaleFactor()
     drawCircle(
-        color = Color.Blue,
+        color = Color(0xFF1565C0),
         radius = positionRadius,
         center = Offset(screenX, screenY),
         alpha = 0.8f

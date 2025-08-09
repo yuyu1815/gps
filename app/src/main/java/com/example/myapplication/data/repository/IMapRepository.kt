@@ -1,6 +1,5 @@
 package com.example.myapplication.data.repository
 
-import com.example.myapplication.domain.model.Beacon
 import com.example.myapplication.domain.model.IndoorMap
 import com.example.myapplication.domain.model.PointOfInterest
 import kotlinx.coroutines.flow.Flow
@@ -27,29 +26,6 @@ interface IMapRepository : IRepository<IndoorMap> {
      * @return True if the operation was successful, false otherwise
      */
     suspend fun setActiveMap(mapId: String): Boolean
-    
-    /**
-     * Adds a beacon to a map.
-     * @param mapId ID of the map
-     * @param beacon Beacon to add
-     * @return True if the operation was successful, false otherwise
-     */
-    suspend fun addBeaconToMap(mapId: String, beacon: Beacon): Boolean
-    
-    /**
-     * Removes a beacon from a map.
-     * @param mapId ID of the map
-     * @param beaconId ID of the beacon to remove
-     * @return True if the operation was successful, false otherwise
-     */
-    suspend fun removeBeaconFromMap(mapId: String, beaconId: String): Boolean
-    
-    /**
-     * Gets all beacons for a map.
-     * @param mapId ID of the map
-     * @return List of beacons for the map
-     */
-    suspend fun getBeaconsForMap(mapId: String): List<Beacon>
     
     /**
      * Adds a point of interest to a map.

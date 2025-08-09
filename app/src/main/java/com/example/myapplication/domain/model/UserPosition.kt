@@ -35,7 +35,11 @@ data class UserPosition(
      * Confidence level of the position (0.0 to 1.0).
      * Higher values indicate higher confidence.
      */
-    val confidence: Float = 0.5f
+    val confidence: Float = 0.5f,
+    // Optional uncertainty ellipse (standard deviations in meters and heading in radians)
+    val sigmaX: Float? = null,
+    val sigmaY: Float? = null,
+    val sigmaTheta: Float? = null
 ) {
     /**
      * Calculates the distance to another position.
@@ -44,6 +48,35 @@ data class UserPosition(
         val dx = this.x - other.x
         val dy = this.y - other.y
         return Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+    }
+    
+    /**
+     * Checks if this position has moved significantly from another position.
+     * 
+     * @param other The position to compare against
+     * @param threshold The minimum distance threshold for considering movement significant
+     * @return True if the position has moved significantly, false otherwise
+     */
+    fun hasMovedSignificantly(other: UserPosition, threshold: Float = 0.5f): Boolean {
+        if (!UserPosition.isValid(this) || !UserPosition.isValid(other)) {
+            return false
+        }
+        return distanceTo(other) > threshold
+    }
+    
+    /**
+     * Calculates the movement direction from another position.
+     * 
+     * @param other The position to calculate direction from
+     * @return Direction in degrees (0-360), or null if positions are invalid
+     */
+    fun movementDirectionFrom(other: UserPosition): Float? {
+        if (!UserPosition.isValid(this) || !UserPosition.isValid(other)) {
+            return null
+        }
+        val dx = this.x - other.x
+        val dy = this.y - other.y
+        return Math.toDegrees(Math.atan2(dy.toDouble(), dx.toDouble())).toFloat()
     }
     
     /**
@@ -97,6 +130,8 @@ enum class PositionSource {
      * Position calculated from BLE beacons.
      */
     BLE,
+    /** Position calculated from Wi‑Fi fingerprinting. */
+    WIFI,
     
     /**
      * Position calculated from Pedestrian Dead Reckoning.
@@ -111,5 +146,10 @@ enum class PositionSource {
     /**
      * Position from an unknown source.
      */
-    UNKNOWN
+    UNKNOWN,
+    
+    /**
+     * Position from ground truth data (for testing and evaluation).
+     */
+    GROUND_TRUTH
 }

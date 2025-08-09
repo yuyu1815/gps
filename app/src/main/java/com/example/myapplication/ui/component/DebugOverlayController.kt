@@ -24,7 +24,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.myapplication.domain.model.Beacon
 import com.example.myapplication.domain.model.SensorData
 import com.example.myapplication.domain.model.UserPosition
 import com.example.myapplication.presentation.viewmodel.PerformanceMetricsViewModel
@@ -36,14 +35,12 @@ import org.koin.androidx.compose.koinViewModel
  * 
  * @param sensorData Current sensor data from device sensors
  * @param userPosition Current calculated user position
- * @param beacons List of detected beacons
  * @param modifier Modifier for customizing the layout
  */
 @Composable
 fun DebugOverlayController(
     sensorData: SensorData.Combined?,
     userPosition: UserPosition?,
-    beacons: List<Beacon>,
     modifier: Modifier = Modifier,
     performanceMetricsViewModel: PerformanceMetricsViewModel = koinViewModel()
 ) {
@@ -80,7 +77,6 @@ fun DebugOverlayController(
             DebugOverlay(
                 sensorData = sensorData,
                 userPosition = userPosition,
-                beacons = beacons,
                 performanceMetrics = performanceMetrics
             )
         }

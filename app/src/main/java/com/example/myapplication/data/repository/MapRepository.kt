@@ -1,6 +1,5 @@
 package com.example.myapplication.data.repository
 
-import com.example.myapplication.domain.model.Beacon
 import com.example.myapplication.domain.model.IndoorMap
 import com.example.myapplication.domain.model.PointOfInterest
 import com.squareup.moshi.Moshi
@@ -107,54 +106,6 @@ class MapRepository : IMapRepository {
             Timber.w("Map not found for setting active: $mapId")
             false
         }
-    }
-    
-    override suspend fun addBeaconToMap(mapId: String, beacon: Beacon): Boolean {
-        val map = maps[mapId]
-        return if (map != null) {
-            // Create a new list with the added beacon
-            val updatedBeacons = map.beacons.toMutableList()
-            // Remove any existing beacon with the same ID
-            updatedBeacons.removeAll { it.id == beacon.id }
-            updatedBeacons.add(beacon)
-            
-            // Create a new map with the updated beacons
-            val updatedMap = map.copy(beacons = updatedBeacons)
-            maps[mapId] = updatedMap
-            updateMapsFlow()
-            Timber.d("Added beacon ${beacon.id} to map $mapId")
-            true
-        } else {
-            Timber.w("Map not found for adding beacon: $mapId")
-            false
-        }
-    }
-    
-    override suspend fun removeBeaconFromMap(mapId: String, beaconId: String): Boolean {
-        val map = maps[mapId]
-        return if (map != null) {
-            // Create a new list without the removed beacon
-            val updatedBeacons = map.beacons.filter { it.id != beaconId }
-            
-            if (updatedBeacons.size < map.beacons.size) {
-                // Create a new map with the updated beacons
-                val updatedMap = map.copy(beacons = updatedBeacons)
-                maps[mapId] = updatedMap
-                updateMapsFlow()
-                Timber.d("Removed beacon $beaconId from map $mapId")
-                true
-            } else {
-                Timber.w("Beacon not found in map: $beaconId")
-                false
-            }
-        } else {
-            Timber.w("Map not found for removing beacon: $mapId")
-            false
-        }
-    }
-    
-    override suspend fun getBeaconsForMap(mapId: String): List<Beacon> {
-        return maps[mapId]?.beacons ?: emptyList()
     }
     
     override suspend fun addPointOfInterest(mapId: String, poi: PointOfInterest): Boolean {

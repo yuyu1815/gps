@@ -1,441 +1,643 @@
 package com.example.myapplication.ui.screen
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.sp
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import com.example.myapplication.presentation.viewmodel.MapViewModel
 import org.koin.androidx.compose.koinViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.koin.androidx.compose.getKoin
+import com.example.myapplication.service.SensorMonitor
 
 /**
- * Map screen that displays the indoor map and user position.
- * Provides controls for zooming, panning, and toggling map features.
+ * Hyper-style map screen with modern, clean UI design.
+ * Features:
+ * - Floating action buttons for quick access
+ * - Real-time position indicator with accuracy ring
+ * - Smooth animations and transitions
+ * - Minimal, distraction-free interface
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen(
     viewModel: MapViewModel = koinViewModel(),
     isDebugMode: Boolean = false,
-    windowSizeClass: WindowSizeClass? = null
+    windowSizeClass: WindowSizeClass? = null,
+    onNavigateToSettings: () -> Unit = {}
 ) {
-    // Determine if we should use a different layout based on screen width
     val isCompactWidth = windowSizeClass?.widthSizeClass == WindowWidthSizeClass.Compact || windowSizeClass == null
     val uiState by viewModel.uiState.collectAsState()
-    val beacons by viewModel.beacons.collectAsState(initial = emptyList())
-    
-    // State for map zoom and pan
+    val context = LocalContext.current
+
     var scale by remember { mutableStateOf(1f) }
     var offsetX by remember { mutableStateOf(0f) }
     var offsetY by remember { mutableStateOf(0f) }
-    var showControls by remember { mutableStateOf(true) }
-    
+    var showAccuracyRing by remember { mutableStateOf(true) }
+    var showDebugInfo by remember { mutableStateOf(false) }
+
+    // アニメーションを最適化（より短い時間でスムーズに）
+    val animatedScale by animateFloatAsState(
+        targetValue = scale,
+        animationSpec = tween(200), // 300ms → 200ms
+        label = "scale"
+    )
+
+    val animatedOffsetX by animateFloatAsState(
+        targetValue = offsetX,
+        animationSpec = tween(200), // 300ms → 200ms
+        label = "offsetX"
+    )
+
+    val animatedOffsetY by animateFloatAsState(
+        targetValue = offsetY,
+        animationSpec = tween(200), // 300ms → 200ms
+        label = "offsetY"
+    )
+
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+        color = MaterialTheme.colorScheme.surface
     ) {
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Main map canvas
+            HyperMapCanvas(
+                uiState = uiState,
+                scale = animatedScale,
+                offsetX = animatedOffsetX,
+                offsetY = animatedOffsetY,
+                showAccuracyRing = showAccuracyRing,
+                onTransform = { newScale, newOffsetX, newOffsetY ->
+                    scale = newScale
+                    offsetX = newOffsetX
+                    offsetY = newOffsetY
+                }
+            )
+
+            // Top status bar
+            HyperStatusBar(
+                uiState = uiState,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 48.dp)
+            )
+
+            // Sensor registration mini indicators (top-right)
+            val koin = getKoin()
+            val sensorMonitor = koin.get<SensorMonitor>()
+            val regStates by sensorMonitor.registrationStates.collectAsState()
+            Card(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        MiniDot(label = "ACC", state = regStates.accelerometer)
+                        MiniDot(label = "GYR", state = regStates.gyroscope)
+                        MiniDot(label = "MAG", state = regStates.magnetometer)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        MiniDot(label = "LIN", state = regStates.linearAcceleration)
+                        MiniDot(label = "GRV", state = regStates.gravity)
+                    }
+                }
+            }
+
+            // Position indicator
+            uiState?.userPosition?.let { position ->
+                HyperPositionIndicator(
+                    position = position,
+                    showAccuracyRing = showAccuracyRing,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .offset(
+                            x = (position.x * animatedScale + animatedOffsetX).dp,
+                            y = (position.y * animatedScale + animatedOffsetY).dp
+                        )
+                )
+            }
+
+            // Floating action buttons
+            HyperFloatingActions(
+                onSettingsClick = onNavigateToSettings,
+                onDebugToggle = { showDebugInfo = !showDebugInfo },
+                onAccuracyToggle = { showAccuracyRing = !showAccuracyRing },
+                showDebugInfo = showDebugInfo,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(24.dp)
+            )
+
+            // Debug overlay (when enabled)
+            if (showDebugInfo) {
+                HyperDebugOverlay(
+                    uiState = uiState,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(16.dp)
+                )
+            }
+        }
+    }
+}
+@Composable
+private fun MiniDot(label: String, state: com.example.myapplication.service.RegistrationState) {
+    val color = when (state) {
+        com.example.myapplication.service.RegistrationState.READY -> Color(0xFF4CAF50)
+        com.example.myapplication.service.RegistrationState.ERROR -> Color(0xFFF44336)
+        com.example.myapplication.service.RegistrationState.INITIALIZING -> Color(0xFFFF9800)
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun HyperMapCanvas(
+    uiState: MapViewModel.MapUiState?,
+    scale: Float,
+    offsetX: Float,
+    offsetY: Float,
+    showAccuracyRing: Boolean,
+    onTransform: (Float, Float, Float) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTransformGestures { centroid, pan, zoom, rotation ->
+                    val newScale = (scale * zoom).coerceIn(0.5f, 3f)
+                    val newOffsetX = (offsetX + pan.x).coerceIn(-1000f, 1000f)
+                    val newOffsetY = (offsetY + pan.y).coerceIn(-1000f, 1000f)
+                    onTransform(newScale, newOffsetX, newOffsetY)
+                }
+            }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onDoubleTap = { offset ->
+                        val newScale = (scale * 1.5f).coerceIn(0.5f, 3f)
+                        onTransform(newScale, offsetX, offsetY)
+                    }
+                )
+            }
+    ) {
+        // Map background (placeholder for now)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTransformGestures { _, pan, zoom, _ ->
-                        scale = (scale * zoom).coerceIn(0.5f, 3f)
-                        offsetX += pan.x
-                        offsetY += pan.y
-                    }
-                }
+                .background(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = RoundedCornerShape(16.dp)
+                )
         ) {
-            // Map view with simulated grid
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer(
-                        scaleX = scale,
-                        scaleY = scale,
-                        translationX = offsetX,
-                        translationY = offsetY
-                    )
-                    .semantics {
-                        contentDescription = "Indoor map with user position"
-                        stateDescription = "Map is at ${(scale * 100).toInt()}% zoom level"
-                    }
-            ) {
-                val canvasWidth = size.width
-                val canvasHeight = size.height
-                val gridSize = 50f
-                
-                // Draw grid
-                val gridColor = Color.LightGray.copy(alpha = 0.3f)
-                
-                // Vertical lines
-                for (i in 0..(canvasWidth / gridSize).toInt()) {
-                    val x = i * gridSize
-                    drawLine(
-                        color = gridColor,
-                        start = Offset(x, 0f),
-                        end = Offset(x, canvasHeight),
-                        strokeWidth = 1f
-                    )
-                }
-                
-                // Horizontal lines
-                for (i in 0..(canvasHeight / gridSize).toInt()) {
-                    val y = i * gridSize
-                    drawLine(
-                        color = gridColor,
-                        start = Offset(0f, y),
-                        end = Offset(canvasWidth, y),
-                        strokeWidth = 1f
-                    )
-                }
-                
-                // Draw simulated walls
-                val wallColor = Color.DarkGray
-                drawLine(
-                    color = wallColor,
-                    start = Offset(100f, 100f),
-                    end = Offset(300f, 100f),
-                    strokeWidth = 5f,
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    color = wallColor,
-                    start = Offset(300f, 100f),
-                    end = Offset(300f, 400f),
-                    strokeWidth = 5f,
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    color = wallColor,
-                    start = Offset(300f, 400f),
-                    end = Offset(100f, 400f),
-                    strokeWidth = 5f,
-                    cap = StrokeCap.Round
-                )
-                drawLine(
-                    color = wallColor,
-                    start = Offset(100f, 400f),
-                    end = Offset(100f, 100f),
-                    strokeWidth = 5f,
-                    cap = StrokeCap.Round
-                )
-                
-                // Draw simulated beacons if enabled
-                uiState?.let { state ->
-                    if (state.showBeacons) {
-                        val beaconColor = Color.Blue
-                        val beaconRadius = 10f
-                        
-                        // Simulated beacon positions
-                        val beaconPositions = listOf(
-                            Offset(100f, 100f),
-                            Offset(300f, 100f),
-                            Offset(300f, 400f),
-                            Offset(100f, 400f)
-                        )
-                        
-                        beaconPositions.forEach { position ->
-                            drawCircle(
-                                color = beaconColor,
-                                radius = beaconRadius,
-                                center = position
-                            )
-                            
-                            // Draw beacon range
-                            drawCircle(
-                                color = beaconColor.copy(alpha = 0.1f),
-                                radius = 100f,
-                                center = position
-                            )
-                            
-                            drawCircle(
-                                color = beaconColor,
-                                radius = beaconRadius,
-                                center = position,
-                                style = Stroke(width = 2f)
-                            )
-                        }
-                    }
-                    
-                    // Draw user position
-                    val userPosition = Offset(
-                        200f + state.userPosition.x * 10, 
-                        250f + state.userPosition.y * 10
-                    )
-                    
-                    // User position confidence circle
-                    drawCircle(
-                        color = Color.Green.copy(alpha = 0.2f),
-                        radius = 30f * state.userPosition.confidence,
-                        center = userPosition
-                    )
-                    
-                    // User position dot
-                    drawCircle(
-                        color = Color.Green,
-                        radius = 10f,
-                        center = userPosition
-                    )
-                    
-                    // Draw path if enabled
-                    if (state.showPath && state.pathPoints.isNotEmpty()) {
-                        val pathColor = Color.Red.copy(alpha = 0.7f)
-                        
-                        // Simulated path points
-                        val pathPoints = listOf(
-                            Offset(150f, 150f),
-                            Offset(200f, 200f),
-                            Offset(250f, 220f),
-                            userPosition
-                        )
-                        
-                        // Draw path lines
-                        for (i in 0 until pathPoints.size - 1) {
-                            drawLine(
-                                color = pathColor,
-                                start = pathPoints[i],
-                                end = pathPoints[i + 1],
-                                strokeWidth = 3f
-                            )
-                        }
-                    }
-                }
-            }
-            
-            // Position info card
-            uiState?.let { state ->
-                if (showControls) {
-                    Card(
-                        modifier = Modifier
-                            .align(if (isCompactWidth) Alignment.TopCenter else Alignment.TopEnd)
-                            .padding(top = 16.dp, end = if (isCompactWidth) 0.dp else 16.dp)
-                            .fillMaxWidth(if (isCompactWidth) 0.8f else 0.4f)
-                            .semantics {
-                                contentDescription = "Position information card"
-                                stateDescription = "Position: (${state.userPosition.x.toInt()}, ${state.userPosition.y.toInt()}), Confidence: ${(state.userPosition.confidence * 100).toInt()}%"
-                            },
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Indoor Positioning Map",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            Text(
-                                text = "Position: (${state.userPosition.x.toInt()}, ${state.userPosition.y.toInt()})",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            
-                            Text(
-                                text = "Confidence: ${(state.userPosition.confidence * 100).toInt()}%",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Beacons:",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                Switch(
-                                    checked = state.showBeacons,
-                                    onCheckedChange = { viewModel.toggleBeaconDisplay() },
-                                    modifier = Modifier.semantics {
-                                        contentDescription = "Show beacons"
-                                        stateDescription = if (state.showBeacons) "Beacons are visible" else "Beacons are hidden"
-                                    }
-                                )
-                                
-                                Spacer(modifier = Modifier.width(16.dp))
-                                
-                                Text(
-                                    text = "Path:",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                Switch(
-                                    checked = state.showPath,
-                                    onCheckedChange = { viewModel.togglePathDisplay() },
-                                    modifier = Modifier.semantics {
-                                        contentDescription = "Show path"
-                                        stateDescription = if (state.showPath) "Path is visible" else "Path is hidden"
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Zoom controls
-            if (showControls) {
-                Column(
-                    modifier = Modifier
-                        .align(if (isCompactWidth) Alignment.CenterEnd else Alignment.BottomEnd)
-                        .padding(
-                            end = 16.dp,
-                            bottom = if (isCompactWidth) 0.dp else 80.dp
-                        )
+            // Grid pattern for visual reference
+            HyperGridPattern()
+        }
+    }
+}
+
+@Composable
+private fun HyperStatusBar(
+    uiState: MapViewModel.MapUiState?,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .shadow(8.dp, RoundedCornerShape(12.dp)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // 座標表示を追加
+            uiState?.userPosition?.let { position ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
-                        onClick = { scale = (scale * 1.2f).coerceIn(0.5f, 3f) },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .semantics { 
-                                contentDescription = "Zoom in"
-                                stateDescription = "Current zoom level: ${(scale * 100).toInt()}%"
-                            }
-                    ) {
+                    // X座標
+                    Column {
                         Text(
-                            text = "+",
-                            style = MaterialTheme.typography.titleMedium
+                            text = "X座標",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "%.2f m".format(position.x),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                
-                    Spacer(modifier = Modifier.height(8.dp))
-                
-                    Button(
-                        onClick = { scale = (scale / 1.2f).coerceIn(0.5f, 3f) },
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .semantics { 
-                                contentDescription = "Zoom out"
-                                stateDescription = "Current zoom level: ${(scale * 100).toInt()}%"
-                            }
-                    ) {
+
+                    // Y座標
+                    Column {
                         Text(
-                            text = "-",
-                            style = MaterialTheme.typography.titleMedium
+                            text = "Y座標",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "%.2f m".format(position.y),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // 精度
+                    Column {
+                        Text(
+                            text = "精度",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "%.1f%%".format(position.confidence * 100),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = when {
+                                position.confidence > 0.8f -> Color.Green
+                                position.confidence > 0.5f -> Color.Yellow
+                                else -> Color.Red
+                            }
                         )
                     }
                 }
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
             }
-            
-            // Bottom controls
+
+            // 既存のステータス情報
             Row(
-                modifier = Modifier
-                    .align(if (isCompactWidth) Alignment.BottomCenter else Alignment.BottomStart)
-                    .fillMaxWidth(if (isCompactWidth) 1f else 0.5f)
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Settings button
-                FloatingActionButton(
-                    onClick = { /* Open settings */ },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings"
-                    )
-                }
-                
-                Spacer(modifier = Modifier.weight(1f))
-                
-                // Toggle controls visibility
-                FloatingActionButton(
-                    onClick = { showControls = !showControls },
-                    modifier = Modifier
-                        .size(48.dp)
-                        .semantics { 
-                            contentDescription = if (showControls) "Hide controls" else "Show controls"
-                            stateDescription = if (showControls) "Controls are visible" else "Controls are hidden"
-                        }
-                ) {
+                // 測位状態
+                Column {
                     Text(
-                        text = if (showControls) "Hide" else "Show",
-                        style = MaterialTheme.typography.labelMedium
+                        text = "測位状態",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = if (uiState?.userPosition?.confidence ?: 0f > 0.3f) "アクティブ" else "初期化中",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (uiState?.userPosition?.confidence ?: 0f > 0.3f)
+                            Color.Green else Color(0xFFFF9800)
                     )
                 }
-                
-                Spacer(modifier = Modifier.weight(1f))
-                
-                // Center position button
-                FloatingActionButton(
-                    onClick = {
-                        // Reset zoom and center on user
-                        scale = 1f
-                        offsetX = 0f
-                        offsetY = 0f
-                    },
-                    modifier = Modifier
-                        .size(48.dp)
-                        .semantics { 
-                            contentDescription = "Center on my location"
-                            stateDescription = "Resets zoom and centers the map on your current position"
-                        }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = null // Content description is provided by parent
+
+                // 更新頻度
+                Column {
+                    Text(
+                        text = "更新頻度",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "10 Hz",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // バッテリー使用量
+                Column {
+                    Text(
+                        text = "バッテリー",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "5%/h",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HyperPositionIndicator(
+    position: com.example.myapplication.presentation.viewmodel.MapViewModel.UserPosition,
+    showAccuracyRing: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(modifier = modifier) {
+        // Accuracy ring (toggleable)
+        if (showAccuracyRing) {
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    )
+            )
+        }
+
+        // Position dot
+        Box(
+            modifier = Modifier
+                .size(16.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary)
+                .align(Alignment.Center)
+        )
+
+        // Direction indicator
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary)
+                .align(Alignment.Center)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Navigation,
+                contentDescription = "Direction",
+                modifier = Modifier
+                    .size(16.dp)
+                    .align(Alignment.Center),
+                tint = MaterialTheme.colorScheme.onPrimary
+            )
+        }
+    }
+}
+
+@Composable
+private fun HyperFloatingActions(
+    onSettingsClick: () -> Unit,
+    onDebugToggle: () -> Unit,
+    onAccuracyToggle: () -> Unit,
+    showDebugInfo: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Settings button
+        FloatingActionButton(
+            onClick = onSettingsClick,
+            modifier = Modifier.size(56.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Settings"
+            )
+        }
+
+        // Debug toggle button
+        FloatingActionButton(
+            onClick = onDebugToggle,
+            modifier = Modifier.size(56.dp),
+            containerColor = if (showDebugInfo)
+                MaterialTheme.colorScheme.primary
+            else
+                MaterialTheme.colorScheme.surface,
+            contentColor = if (showDebugInfo)
+                MaterialTheme.colorScheme.onPrimary
+            else
+                MaterialTheme.colorScheme.onSurface
+        ) {
+            Icon(
+                imageVector = Icons.Default.BugReport,
+                contentDescription = "Debug"
+            )
+        }
+
+        // Accuracy toggle button
+        FloatingActionButton(
+            onClick = onAccuracyToggle,
+            modifier = Modifier.size(56.dp),
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ) {
+            Icon(
+                imageVector = Icons.Default.RadioButtonChecked,
+                contentDescription = "Accuracy Ring"
+            )
+        }
+    }
+}
+
+@Composable
+private fun HyperDebugOverlay(
+    uiState: MapViewModel.MapUiState?,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .shadow(8.dp, RoundedCornerShape(12.dp)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Debug Info",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            uiState?.userPosition?.let { position ->
+                // 座標情報
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "座標情報",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "X: %.3f m".format(position.x),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                    Text(
+                        text = "Y: %.3f m".format(position.y),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                    Text(
+                        text = "精度: %.1f%%".format(position.confidence * 100),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 4.dp))
+            }
+
+            // センサーデータ
+            uiState?.debugData?.let { debugData ->
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "センサーデータ",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    // 加速度計
+                    Text(
+                        text = "加速度計: [%.2f, %.2f, %.2f]".format(
+                            debugData.accelerometerValues.getOrNull(0) ?: 0f,
+                            debugData.accelerometerValues.getOrNull(1) ?: 0f,
+                            debugData.accelerometerValues.getOrNull(2) ?: 0f
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+
+                    // ジャイロスコープ
+                    Text(
+                        text = "ジャイロ: [%.2f, %.2f, %.2f]".format(
+                            debugData.gyroscopeValues.getOrNull(0) ?: 0f,
+                            debugData.gyroscopeValues.getOrNull(1) ?: 0f,
+                            debugData.gyroscopeValues.getOrNull(2) ?: 0f
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+
+                    // 磁力計
+                    Text(
+                        text = "磁力計: [%.2f, %.2f, %.2f]".format(
+                            debugData.magnetometerValues.getOrNull(0) ?: 0f,
+                            debugData.magnetometerValues.getOrNull(1) ?: 0f,
+                            debugData.magnetometerValues.getOrNull(2) ?: 0f
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 4.dp))
+            }
+
+            // PDR情報
+            uiState?.debugData?.let { debugData ->
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "PDR情報",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "歩数: ${debugData.pdrStepCount}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                    Text(
+                        text = "方位: %.1f°".format(debugData.pdrHeading),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                    Text(
+                        text = "歩幅: %.2f m".format(debugData.pdrStepLength),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 4.dp))
+            }
+
+            // Wi-Fi情報
+            uiState?.debugData?.let { debugData ->
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Wi-Fi情報",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "信号強度: %.1f dBm".format(debugData.wifiSignalStrength),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                    Text(
+                        text = "アクセスポイント: ${debugData.wifiAccessPointCount}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                    Text(
+                        text = "精度: %.1f m".format(debugData.wifiPositionAccuracy),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HyperGridPattern() {
+    // Simple grid pattern for visual reference
+    // This would be replaced with actual map rendering
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Grid lines would be drawn here
+        // For now, just a placeholder
     }
 }

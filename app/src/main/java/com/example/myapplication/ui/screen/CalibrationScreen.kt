@@ -16,13 +16,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -68,7 +68,7 @@ fun CalibrationScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
                         )
                     }
@@ -105,6 +105,7 @@ fun CalibrationScreen(
                             text = when (tab) {
                                 CalibrationTab.TX_POWER -> "TxPower"
                                 CalibrationTab.ENVIRONMENTAL -> "Environment"
+                                CalibrationTab.WIFI_FINGERPRINTING -> "Wi-Fi"
                             },
                             style = MaterialTheme.typography.labelLarge
                         )
@@ -142,7 +143,34 @@ fun CalibrationScreen(
                         onEnvironmentalFactorChange = { environmentalFactor = it }
                     )
                 }
+
+                CalibrationTab.WIFI_FINGERPRINTING -> {
+                    WifiFingerprintingCalibration()
+                }
             }
+        }
+    }
+}
+
+@Composable
+fun WifiFingerprintingCalibration() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Wi-Fi Fingerprinting",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -193,7 +221,7 @@ fun TxPowerCalibration(
                 if (isCalibrating) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(160.dp),
-                        progress = progress
+                        progress = { progress }
                     )
                 }
                 
@@ -232,7 +260,7 @@ fun TxPowerCalibration(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 LinearProgressIndicator(
-                    progress = progress,
+                    progress = { progress },
                     modifier = Modifier.fillMaxWidth(0.7f)
                 )
             }
@@ -386,7 +414,7 @@ fun EnvironmentDescription(
         }
     }
     
-    Divider(
+    HorizontalDivider(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
@@ -395,5 +423,6 @@ fun EnvironmentDescription(
 
 enum class CalibrationTab {
     TX_POWER,
-    ENVIRONMENTAL
+    ENVIRONMENTAL,
+    WIFI_FINGERPRINTING
 }

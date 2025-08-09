@@ -2,7 +2,7 @@ package com.example.myapplication.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.example.myapplication.domain.usecase.fusion.FuseSensorDataUseCase.FusionMethod
+import com.example.myapplication.domain.model.FusionMethod
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Before

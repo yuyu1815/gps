@@ -142,7 +142,6 @@ class BatteryOptimizerTest {
         val scanConfig = batteryOptimizer.getScanConfig(
             isStatic = true,
             isLongStatic = false,
-            activityLevel = ActivityLevel.NORMAL,
             defaultScanMode = 1, // SCAN_MODE_BALANCED
             lowPowerScanMode = 0, // SCAN_MODE_LOW_POWER
             highPrecisionScanMode = 2 // SCAN_MODE_LOW_LATENCY
@@ -166,7 +165,6 @@ class BatteryOptimizerTest {
         val scanConfig = batteryOptimizer.getScanConfig(
             isStatic = true,
             isLongStatic = true,
-            activityLevel = ActivityLevel.LOW,
             defaultScanMode = 1, // SCAN_MODE_BALANCED
             lowPowerScanMode = 0, // SCAN_MODE_LOW_POWER
             highPrecisionScanMode = 2 // SCAN_MODE_LOW_LATENCY
@@ -190,7 +188,6 @@ class BatteryOptimizerTest {
         val scanConfig = batteryOptimizer.getScanConfig(
             isStatic = false,
             isLongStatic = false,
-            activityLevel = ActivityLevel.HIGH,
             defaultScanMode = 1, // SCAN_MODE_BALANCED
             lowPowerScanMode = 0, // SCAN_MODE_LOW_POWER
             highPrecisionScanMode = 2 // SCAN_MODE_LOW_LATENCY
@@ -215,7 +212,6 @@ class BatteryOptimizerTest {
         val scanConfig = batteryOptimizer.getScanConfig(
             isStatic = false,
             isLongStatic = false,
-            activityLevel = ActivityLevel.HIGH,
             defaultScanMode = 1, // SCAN_MODE_BALANCED
             lowPowerScanMode = 0, // SCAN_MODE_LOW_POWER
             highPrecisionScanMode = 2 // SCAN_MODE_LOW_LATENCY

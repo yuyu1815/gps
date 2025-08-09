@@ -1,0 +1,470 @@
+# Hyper-Inspired Indoor Positioning Techniques
+
+## **Core Philosophy: 1-Meter Accuracy Achievement**
+
+Andrew Hart氏のHyperプロジェクトに基づき、複数の技術を組み合わせて1メートル精度の屋内測位を実現する手法を実装します。
+
+### **Multi-Modal Sensor Fusion Approach**
+
+Hyperプロジェクトの核となる技術は、単一の技術に依存せず、複数の技術を組み合わせることで精度を向上させることです。
+
+```kotlin
+class HyperFusionEngine {
+    private val blePositioning = BlePositioningEngine()
+    private val wifiPositioning = WifiPositioningEngine()
+    private val magneticPositioning = MagneticPositioningEngine()
+    private val visualPositioning = VisualPositioningEngine()
+    private val pdrEngine = PedestrianDeadReckoningEngine()
+    
+    fun getFusedPosition(): PositionResult {
+        val blePosition = blePositioning.getPosition()
+        val wifiPosition = wifiPositioning.getPosition()
+        val magneticPosition = magneticPositioning.getPosition()
+        val visualPosition = visualPositioning.getPosition()
+        val pdrPosition = pdrEngine.getPosition()
+        
+        // Hyper's weighted fusion algorithm
+        return fusePositions(
+            blePosition, wifiPosition, magneticPosition, 
+            visualPosition, pdrPosition
+        )
+    }
+    
+    private fun fusePositions(vararg positions: PositionResult): PositionResult {
+        // Implement Hyper's confidence-based weighting
+        val validPositions = positions.filter { it.confidence > 0.3 }
+        
+        if (validPositions.isEmpty()) {
+            return PositionResult.LowConfidence()
+        }
+        
+        // Weight by confidence and sensor reliability
+        val weights = validPositions.map { position ->
+            when (position.source) {
+                SensorType.BLE -> position.confidence * 0.3f
+                SensorType.WIFI -> position.confidence * 0.25f
+                SensorType.MAGNETIC -> position.confidence * 0.2f
+                SensorType.VISUAL -> position.confidence * 0.15f
+                SensorType.PDR -> position.confidence * 0.1f
+            }
+        }
+        
+        val totalWeight = weights.sum()
+        val fusedX = validPositions.zip(weights).sumOf { 
+            it.first.x * it.second / totalWeight 
+        }
+        val fusedY = validPositions.zip(weights).sumOf { 
+            it.first.y * it.second / totalWeight 
+        }
+        
+        return PositionResult.Success(fusedX, fusedY, totalWeight)
+    }
+}
+```
+
+## **Advanced BLE Positioning Techniques**
+
+### **1. Multi-Frequency BLE Analysis**
+
+Hyperプロジェクトでは、BLEの複数周波数特性を活用します：
+
+```kotlin
+class MultiFrequencyBleAnalyzer {
+    fun analyzeFrequencyCharacteristics(scanResult: ScanResult): FrequencyAnalysis {
+        val rssi2_4GHz = scanResult.rssi
+        val rssi5GHz = extract5GHzRssi(scanResult)
+        
+        // Frequency diversity for better accuracy
+        val frequencyRatio = rssi2_4GHz.toFloat() / rssi5GHz.toFloat()
+        val distanceEstimate = estimateDistanceFromFrequencyRatio(frequencyRatio)
+        
+        return FrequencyAnalysis(
+            distance = distanceEstimate,
+            confidence = calculateFrequencyConfidence(frequencyRatio)
+        )
+    }
+    
+    private fun estimateDistanceFromFrequencyRatio(ratio: Float): Double {
+        // Hyper's frequency-based distance estimation
+        return when {
+            ratio > 1.2f -> 0.5 // Very close
+            ratio > 0.8f -> 1.0 // Close
+            ratio > 0.5f -> 2.0 // Medium
+            else -> 5.0 // Far
+        }
+    }
+}
+```
+
+### **2. Advanced RSSI Processing**
+
+```kotlin
+class HyperRssiProcessor {
+    private val rssiHistory = mutableMapOf<String, CircularBuffer<Float>>()
+    private val kalmanFilters = mutableMapOf<String, KalmanFilter>()
+    
+    fun processRssi(address: String, rssi: Float): ProcessedRssi {
+        // Apply Hyper's multi-stage filtering
+        val filteredRssi = applyAdaptiveFilter(address, rssi)
+        val kalmanRssi = applyKalmanFilter(address, filteredRssi)
+        val outlierRemoved = removeOutliers(address, kalmanRssi)
+        
+        return ProcessedRssi(
+            value = outlierRemoved,
+            confidence = calculateRssiConfidence(address, outlierRemoved),
+            stability = calculateRssiStability(address)
+        )
+    }
+    
+    private fun applyAdaptiveFilter(address: String, rssi: Float): Float {
+        val history = rssiHistory.getOrPut(address) { CircularBuffer(20) }
+        history.add(rssi)
+        
+        // Adaptive window size based on signal stability
+        val stability = calculateSignalStability(history.toList())
+        val windowSize = when {
+            stability > 0.8f -> 5
+            stability > 0.5f -> 10
+            else -> 15
+        }
+        
+        return history.toList().takeLast(windowSize).average().toFloat()
+    }
+}
+```
+
+## **Wi-Fi Fingerprinting Enhancement**
+
+### **1. Multi-Dimensional Fingerprinting**
+
+```kotlin
+class HyperWifiFingerprint {
+    data class Fingerprint(
+        val ssids: Map<String, Int>, // SSID -> RSSI
+        val channels: Map<Int, Int>, // Channel -> Signal strength
+        val frequencies: Map<Int, Float>, // Frequency -> Signal quality
+        val timing: Map<String, Long> // Timing characteristics
+    )
+    
+    fun createFingerprint(wifiScanResults: List<ScanResult>): Fingerprint {
+        val ssids = wifiScanResults.associate { 
+            it.ssid to it.level 
+        }
+        
+        val channels = wifiScanResults.associate { 
+            it.frequency to it.level 
+        }
+        
+        val frequencies = wifiScanResults.associate { 
+            it.frequency to calculateFrequencyQuality(it) 
+        }
+        
+        val timing = wifiScanResults.associate { 
+            it.bssid to it.timestamp 
+        }
+        
+        return Fingerprint(ssids, channels, frequencies, timing)
+    }
+    
+    fun matchFingerprint(current: Fingerprint, database: List<Fingerprint>): PositionMatch {
+        return database.map { stored ->
+            val similarity = calculateMultiDimensionalSimilarity(current, stored)
+            PositionMatch(stored.position, similarity)
+        }.maxByOrNull { it.similarity } ?: PositionMatch.Unknown()
+    }
+}
+```
+
+## **Magnetic Field Positioning**
+
+### **1. Magnetic Signature Mapping**
+
+```kotlin
+class MagneticPositioningEngine {
+    private val magneticMap = mutableMapOf<Position, MagneticSignature>()
+    
+    fun updateMagneticSignature(position: Position, magneticData: FloatArray) {
+        val signature = MagneticSignature(
+            x = magneticData[0],
+            y = magneticData[1],
+            z = magneticData[2],
+            magnitude = sqrt(magneticData[0].pow(2) + magneticData[1].pow(2) + magneticData[2].pow(2)),
+            timestamp = System.currentTimeMillis()
+        )
+        
+        magneticMap[position] = signature
+    }
+    
+    fun estimatePositionFromMagnetic(magneticData: FloatArray): PositionResult {
+        val currentSignature = MagneticSignature(
+            x = magneticData[0],
+            y = magneticData[1],
+            z = magneticData[2],
+            magnitude = sqrt(magneticData[0].pow(2) + magneticData[1].pow(2) + magneticData[2].pow(2)),
+            timestamp = System.currentTimeMillis()
+        )
+        
+        // Find closest magnetic signature
+        val closest = magneticMap.entries.minByOrNull { entry ->
+            calculateMagneticDistance(currentSignature, entry.value)
+        }
+        
+        return closest?.let { 
+            PositionResult.Success(it.key.x, it.key.y, calculateMagneticConfidence(currentSignature, it.value))
+        } ?: PositionResult.LowConfidence()
+    }
+}
+```
+
+## **Visual Positioning Integration**
+
+### **1. Feature-Based Visual Positioning**
+
+```kotlin
+class VisualPositioningEngine {
+    private val featureDatabase = mutableMapOf<Position, List<VisualFeature>>()
+    
+    fun extractVisualFeatures(image: Bitmap): List<VisualFeature> {
+        // Extract SIFT/SURF features
+        val features = extractSiftFeatures(image)
+        
+        // Filter and rank features by quality
+        return features.filter { feature ->
+            feature.response > 0.1f && feature.octave > 2
+        }.sortedByDescending { it.response }
+    }
+    
+    fun matchVisualFeatures(currentFeatures: List<VisualFeature>): PositionResult {
+        val matches = featureDatabase.entries.map { entry ->
+            val matchCount = countFeatureMatches(currentFeatures, entry.value)
+            val matchQuality = calculateMatchQuality(currentFeatures, entry.value)
+            
+            VisualMatch(entry.key, matchCount, matchQuality)
+        }
+        
+        val bestMatch = matches.maxByOrNull { it.quality }
+        return bestMatch?.let {
+            PositionResult.Success(it.position.x, it.position.y, it.quality)
+        } ?: PositionResult.LowConfidence()
+    }
+}
+```
+
+## **Advanced PDR with Hyper Techniques**
+
+### **1. Multi-Sensor Step Detection**
+
+```kotlin
+class HyperStepDetector {
+    private val accelerometerDetector = AccelerometerStepDetector()
+    private val gyroscopeDetector = GyroscopeStepDetector()
+    private val magnetometerDetector = MagnetometerStepDetector()
+    
+    fun detectStep(sensorData: MultiSensorData): StepDetectionResult {
+        val accelStep = accelerometerDetector.detect(sensorData.accelerometer)
+        val gyroStep = gyroscopeDetector.detect(sensorData.gyroscope)
+        val magStep = magnetometerDetector.detect(sensorData.magnetometer)
+        
+        // Hyper's multi-sensor consensus
+        val stepDetected = when {
+            accelStep && gyroStep && magStep -> true  // High confidence
+            accelStep && gyroStep -> true              // Medium confidence
+            accelStep && magStep -> true               // Medium confidence
+            accelStep -> true                          // Low confidence
+            else -> false
+        }
+        
+        return StepDetectionResult(
+            detected = stepDetected,
+            confidence = calculateStepConfidence(accelStep, gyroStep, magStep),
+            stepLength = estimateStepLength(sensorData)
+        )
+    }
+}
+```
+
+### **2. Advanced Heading Estimation**
+
+```kotlin
+class HyperHeadingEstimator {
+    private val complementaryFilter = ComplementaryFilter()
+    private val magneticCalibrator = MagneticCalibrator()
+    
+    fun estimateHeading(sensorData: MultiSensorData): HeadingResult {
+        // Apply Hyper's adaptive filtering
+        val gyroHeading = complementaryFilter.update(
+            gyroZ = sensorData.gyroscope[2],
+            dt = sensorData.deltaTime,
+            accelMagnitude = calculateAccelMagnitude(sensorData.accelerometer)
+        )
+        
+        // Magnetic correction only when reliable
+        val magneticHeading = if (isMagneticReliable(sensorData.magnetometer)) {
+            magneticCalibrator.correctHeading(sensorData.magnetometer)
+        } else {
+            null
+        }
+        
+        // Adaptive fusion based on magnetic reliability
+        val finalHeading = when {
+            magneticHeading != null -> {
+                val alpha = calculateMagneticReliability(sensorData.magnetometer)
+                alpha * magneticHeading + (1 - alpha) * gyroHeading
+            }
+            else -> gyroHeading
+        }
+        
+        return HeadingResult(
+            heading = finalHeading,
+            confidence = calculateHeadingConfidence(sensorData),
+            source = determineHeadingSource(sensorData)
+        )
+    }
+}
+```
+
+## **Real-Time Performance Optimization**
+
+### **1. Adaptive Processing Rates**
+
+```kotlin
+class HyperPerformanceOptimizer {
+    private var currentProcessingRate = 10 // Hz
+    private val batteryMonitor = BatteryMonitor()
+    private val movementDetector = MovementDetector()
+    
+    fun optimizeProcessingRate(): Int {
+        val batteryLevel = batteryMonitor.getBatteryLevel()
+        val isMoving = movementDetector.isUserMoving()
+        val positioningAccuracy = getCurrentAccuracy()
+        
+        return when {
+            batteryLevel < 0.2f -> 5  // Low battery: reduce rate
+            !isMoving -> 2            // Stationary: minimal rate
+            positioningAccuracy < 1.0f -> 20  // Low accuracy: increase rate
+            else -> 10                // Normal rate
+        }
+    }
+    
+    fun shouldUpdatePosition(): Boolean {
+        val timeSinceLastUpdate = System.currentTimeMillis() - lastUpdateTime
+        val targetInterval = 1000 / currentProcessingRate
+        
+        return timeSinceLastUpdate >= targetInterval
+    }
+}
+```
+
+## **Accuracy Validation and Calibration**
+
+### **1. Hyper-Style Calibration**
+
+```kotlin
+class HyperCalibrationSystem {
+    fun performComprehensiveCalibration(): CalibrationResult {
+        val results = mutableListOf<CalibrationStep>()
+        
+        // 1. BLE TxPower calibration
+        results.add(calibrateBleTxPower())
+        
+        // 2. Environmental factor calibration
+        results.add(calibrateEnvironmentalFactor())
+        
+        // 3. Magnetic field mapping
+        results.add(calibrateMagneticField())
+        
+        // 4. Visual feature database creation
+        results.add(calibrateVisualFeatures())
+        
+        // 5. PDR parameter optimization
+        results.add(calibratePdrParameters())
+        
+        return CalibrationResult(
+            success = results.all { it.success },
+            accuracy = calculateCalibratedAccuracy(results),
+            confidence = calculateCalibrationConfidence(results)
+        )
+    }
+    
+    private fun calibrateBleTxPower(): CalibrationStep {
+        // Hyper's multi-point calibration
+        val calibrationPoints = listOf(0.5f, 1.0f, 2.0f, 5.0f) // meters
+        val rssiMeasurements = mutableMapOf<Float, List<Int>>()
+        
+        calibrationPoints.forEach { distance ->
+            val measurements = measureRssiAtDistance(distance)
+            rssiMeasurements[distance] = measurements
+        }
+        
+        val txPower = calculateOptimalTxPower(rssiMeasurements)
+        return CalibrationStep("BLE_TxPower", true, txPower)
+    }
+}
+```
+
+## **Commercial Deployment Considerations**
+
+### **1. Scalability Patterns**
+
+```kotlin
+class HyperScalabilityManager {
+    fun optimizeForLargeScaleDeployment() {
+        // Implement Hyper's cloud-based positioning
+        val cloudPositioning = CloudPositioningService()
+        val localPositioning = LocalPositioningService()
+        
+        // Hybrid approach: local processing + cloud validation
+        val hybridEngine = HybridPositioningEngine(
+            local = localPositioning,
+            cloud = cloudPositioning
+        )
+    }
+    
+    fun implementMultiVenueSupport() {
+        // Support for multiple venues like Hyper
+        val venueManager = MultiVenueManager()
+        venueManager.registerVenue("mall_floor1", createVenueConfig())
+        venueManager.registerVenue("office_building", createVenueConfig())
+    }
+}
+```
+
+## **Testing Hyper Techniques**
+
+### **1. 1-Meter Accuracy Validation**
+
+```kotlin
+class HyperAccuracyTest {
+    @Test
+    fun testOneMeterAccuracy() {
+        val testPath = generatePreciseTestPath()
+        val positioningSystem = HyperPositioningSystem()
+        
+        val results = mutableListOf<PositionResult>()
+        
+        testPath.forEach { expectedPosition ->
+            val estimatedPosition = positioningSystem.getPosition()
+            results.add(estimatedPosition)
+        }
+        
+        val rmse = calculateRMSE(testPath, results)
+        assertTrue("Should achieve 1-meter accuracy", rmse < 1.0)
+    }
+    
+    @Test
+    fun testMultiModalFusion() {
+        // Test that fusion improves accuracy over single sensors
+        val singleSensorResults = testSingleSensorAccuracy()
+        val fusedResults = testFusedAccuracy()
+        
+        assertTrue("Fusion should improve accuracy", 
+                  fusedResults.rmse < singleSensorResults.rmse)
+    }
+}
+```
+
+このルールは、Andrew Hart氏のHyperプロジェクトの技術的アプローチを反映し、1メートル精度の屋内測位を実現するための具体的な実装パターンを提供します。複数のセンサー技術を組み合わせ、適応的な処理と高度な融合アルゴリズムを使用することで、商業レベルの精度を達成する手法を実装します。
+description:
+globs:
+alwaysApply: false
+---

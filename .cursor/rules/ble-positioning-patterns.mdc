@@ -1,0 +1,339 @@
+# BLE Positioning Implementation Patterns
+
+## **Core Principles**
+
+### **1. RSSI Filtering is Mandatory**
+
+Raw RSSI values are extremely noisy and unreliable. Always implement filtering:
+
+```kotlin
+class RssiFilter {
+    private val rssiHistory = mutableMapOf<String, MutableList<Int>>()
+    private val historySize = 5
+    
+    fun getFilteredRssi(address: String, newRssi: Int): Double {
+        val history = rssiHistory.getOrPut(address) { mutableListOf() }
+        history.add(newRssi)
+        
+        // Maintain history size
+        if (history.size > historySize) {
+            history.removeAt(0)
+        }
+        
+        // Return moving average
+        return history.average()
+    }
+}
+```
+
+### **2. Beacon Staleness Management**
+
+Beacon data becomes stale quickly. Implement timeout mechanisms:
+
+```kotlin
+data class BeaconScanResult(
+    val result: ScanResult,
+    val timestamp: Long
+)
+
+class BeaconManager {
+    private val discoveredBeacons = mutableMapOf<String, BeaconScanResult>()
+    private const val BEACON_TIMEOUT_MS = 5000 // 5 seconds
+    
+    fun cleanupOldBeacons() {
+        val now = System.currentTimeMillis()
+        val iterator = discoveredBeacons.entries.iterator()
+        
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            if (now - entry.value.timestamp > BEACON_TIMEOUT_MS) {
+                iterator.remove()
+            }
+        }
+    }
+    
+    fun getValidBeacons(): Map<String, BeaconScanResult> {
+        cleanupOldBeacons()
+        return discoveredBeacons.toMap()
+    }
+}
+```
+
+### **3. Distance Estimation from RSSI**
+
+Use the log-distance path loss model with proper calibration:
+
+```kotlin
+class DistanceEstimator {
+    private val txPowerMap = mutableMapOf<String, Int>()
+    private val environmentalFactor = 2.0 // Must be calibrated per environment
+    
+    fun estimateDistance(address: String, rssi: Int): Double {
+        val txPower = txPowerMap[address] ?: -59 // Default TxPower
+        
+        // Log-distance path loss model
+        val distance = 10.0.pow((txPower - rssi) / (10.0 * environmentalFactor))
+        
+        return distance.coerceAtLeast(0.1) // Minimum distance
+    }
+    
+    fun calibrateTxPower(address: String, knownDistance: Double, measuredRssi: Int) {
+        // Calculate TxPower from known distance and RSSI
+        val txPower = measuredRssi + 10 * environmentalFactor * log10(knownDistance)
+        txPowerMap[address] = txPower.toInt()
+    }
+}
+```
+
+### **4. Triangulation with Error Handling**
+
+Implement robust triangulation with error handling:
+
+```kotlin
+class TriangulationCalculator {
+    fun calculatePosition(beacons: List<BeaconData>): PositionResult {
+        if (beacons.size < 3) {
+            return PositionResult.Error("Insufficient beacons for triangulation")
+        }
+        
+        try {
+            // Use weighted centroid for 3+ beacons
+            val weights = beacons.map { 1.0 / it.distance }
+            val totalWeight = weights.sum()
+            
+            val x = beacons.zip(weights).sumOf { it.first.x * it.second } / totalWeight
+            val y = beacons.zip(weights).sumOf { it.first.y * it.second } / totalWeight
+            
+            // Calculate confidence based on beacon count and distances
+            val confidence = calculateConfidence(beacons)
+            
+            return PositionResult.Success(x, y, confidence)
+        } catch (e: Exception) {
+            return PositionResult.Error("Triangulation failed: ${e.message}")
+        }
+    }
+    
+    private fun calculateConfidence(beacons: List<BeaconData>): Double {
+        val beaconCount = beacons.size
+        val avgDistance = beacons.map { it.distance }.average()
+        
+        // Higher confidence with more beacons and closer distances
+        return (beaconCount / 5.0).coerceAtMost(1.0) * 
+               (1.0 / (1.0 + avgDistance / 10.0))
+    }
+}
+```
+
+### **5. GDOP (Geometric Dilution of Precision) Consideration**
+
+Consider beacon geometry for positioning accuracy:
+
+```kotlin
+class GdopCalculator {
+    fun calculateGdop(beacons: List<BeaconData>): Double {
+        if (beacons.size < 3) return Double.POSITIVE_INFINITY
+        
+        // Calculate GDOP based on beacon geometry
+        // Lower GDOP = better geometry = higher accuracy
+        val positions = beacons.map { Pair(it.x, it.y) }
+        
+        // Simple GDOP calculation (can be enhanced with full matrix approach)
+        val centroid = positions.reduce { acc, pos -> 
+            Pair(acc.first + pos.first, acc.second + pos.second) 
+        }.let { Pair(it.first / positions.size, it.second / positions.size) }
+        
+        val distances = positions.map { pos ->
+            sqrt((pos.first - centroid.first).pow(2) + (pos.second - centroid.second).pow(2))
+        }
+        
+        return distances.average() // Simplified GDOP
+    }
+    
+    fun isGoodGeometry(beacons: List<BeaconData>): Boolean {
+        val gdop = calculateGdop(beacons)
+        return gdop < 5.0 // Threshold for good geometry
+    }
+}
+```
+
+## **Best Practices**
+
+### **1. Beacon Configuration Management**
+
+Use external configuration files for beacon settings:
+
+```kotlin
+data class BeaconConfig(
+    val macAddress: String,
+    val x: Float,
+    val y: Float,
+    val txPower: Int,
+    val name: String? = null
+)
+
+class BeaconConfigManager {
+    fun loadBeaconConfig(): List<BeaconConfig> {
+        // Load from JSON file
+        return try {
+            val jsonString = loadConfigFile("beacon_config.json")
+            parseBeaconConfig(jsonString)
+        } catch (e: Exception) {
+            logError("Failed to load beacon config", e)
+            emptyList()
+        }
+    }
+}
+```
+
+### **2. Scanning Optimization**
+
+Implement efficient BLE scanning:
+
+```kotlin
+class OptimizedBleScanner {
+    private var isScanning = false
+    private val scanSettings = ScanSettings.Builder()
+        .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+        .setReportDelay(0) // Immediate results
+        .build()
+    
+    fun startScanning() {
+        if (isScanning) return
+        
+        try {
+            bluetoothLeScanner.startScan(null, scanSettings, scanCallback)
+            isScanning = true
+        } catch (e: Exception) {
+            logError("Failed to start BLE scan", e)
+        }
+    }
+    
+    fun stopScanning() {
+        if (!isScanning) return
+        
+        try {
+            bluetoothLeScanner.stopScan(scanCallback)
+            isScanning = false
+        } catch (e: Exception) {
+            logError("Failed to stop BLE scan", e)
+        }
+    }
+}
+```
+
+### **3. Error Handling and Recovery**
+
+Implement comprehensive error handling:
+
+```kotlin
+class BleErrorHandler {
+    fun handleScanError(errorCode: Int) {
+        when (errorCode) {
+            ScanCallback.SCAN_FAILED_ALREADY_STARTED -> {
+                // Already scanning, ignore
+            }
+            ScanCallback.SCAN_FAILED_APPLICATION_REGISTRATION_FAILED -> {
+                // Restart Bluetooth adapter
+                restartBluetoothAdapter()
+            }
+            ScanCallback.SCAN_FAILED_FEATURE_UNSUPPORTED -> {
+                // Device doesn't support BLE
+                showBleNotSupportedError()
+            }
+            ScanCallback.SCAN_FAILED_INTERNAL_ERROR -> {
+                // Retry after delay
+                retryScanning()
+            }
+        }
+    }
+    
+    private fun retryScanning() {
+        Handler(Looper.getMainLooper()).postDelayed({
+            startScanning()
+        }, 1000)
+    }
+}
+```
+
+### **4. Performance Monitoring**
+
+Monitor BLE performance metrics:
+
+```kotlin
+class BlePerformanceMonitor {
+    private var scanStartTime = 0L
+    private var beaconCount = 0
+    private var rssiVariance = 0.0
+    
+    fun onScanStarted() {
+        scanStartTime = System.currentTimeMillis()
+    }
+    
+    fun onBeaconDetected(rssi: Int) {
+        beaconCount++
+        // Calculate RSSI variance for stability assessment
+        updateRssiVariance(rssi)
+    }
+    
+    fun getPerformanceMetrics(): BleMetrics {
+        return BleMetrics(
+            scanDuration = System.currentTimeMillis() - scanStartTime,
+            beaconCount = beaconCount,
+            rssiStability = 1.0 / (1.0 + rssiVariance)
+        )
+    }
+}
+```
+
+## **Testing Patterns**
+
+### **1. Unit Tests for Distance Estimation**
+
+```kotlin
+@Test
+fun testDistanceEstimation() {
+    val estimator = DistanceEstimator()
+    estimator.calibrateTxPower("test_beacon", 1.0, -50)
+    
+    val distance = estimator.estimateDistance("test_beacon", -60)
+    assertEquals(2.0, distance, 0.5)
+}
+```
+
+### **2. Integration Tests**
+
+- Test complete BLE positioning pipeline
+- Verify beacon timeout mechanisms
+- Test error handling scenarios
+
+### **3. Performance Tests**
+
+- Measure scanning frequency and battery impact
+- Test positioning accuracy with known beacon positions
+- Verify RSSI filtering effectiveness
+
+## **Calibration Requirements**
+
+### **1. TxPower Calibration**
+
+- Measure RSSI at exactly 1 meter from each beacon
+- Take multiple measurements and average
+- Document environmental conditions
+
+### **2. Environmental Factor Calibration**
+
+- Walk known distances between beacons
+- Adjust environmental factor until estimated distances match actual
+- Recalibrate when environment changes significantly
+
+### **3. Beacon Geometry Optimization**
+
+- Position beacons to form triangles around target areas
+- Avoid linear arrangements
+- Consider GDOP for optimal positioning accuracy
+
+This rule ensures robust BLE positioning implementation that handles real-world signal variations and provides reliable indoor positioning.
+description:
+globs:
+alwaysApply: false
+---

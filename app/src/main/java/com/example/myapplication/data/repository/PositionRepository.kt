@@ -2,6 +2,7 @@ package com.example.myapplication.data.repository
 
 import com.example.myapplication.domain.model.PositionSource
 import com.example.myapplication.domain.model.UserPosition
+import com.example.myapplication.service.PositionChangeDetector
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +23,9 @@ class PositionRepository(private val context: android.content.Context) : IPositi
     
     // Position history, using LinkedList for efficient add/remove at both ends
     private val positionHistory = LinkedList<UserPosition>()
+    
+    // Position change detector
+    private val positionChangeDetector = PositionChangeDetector(this)
     
     // Maximum history size to prevent excessive memory usage
     private val maxHistorySize = 1000
@@ -75,6 +79,9 @@ class PositionRepository(private val context: android.content.Context) : IPositi
         // Update current position
         _currentPosition.value = position
         
+        // Detect position changes
+        positionChangeDetector.updatePosition(position)
+        
         // Add to history
         positionHistory.add(position)
         
@@ -85,6 +92,33 @@ class PositionRepository(private val context: android.content.Context) : IPositi
         updatePositionHistoryFlow()
         
         Timber.d("Updated position: (${position.x}, ${position.y}), source: ${position.source}, accuracy: ${position.accuracy}")
+    }
+    
+    /**
+     * Gets the position change detector.
+     */
+    override fun getPositionChangeDetector(): PositionChangeDetector {
+        return positionChangeDetector
+    }
+
+    /**
+     * Resets the current position to the last known good position from the history.
+     * A 'good' position is defined as one with a confidence level above a certain threshold.
+     *
+     * @param confidenceThreshold The minimum confidence level for a position to be considered 'good'
+     * @return True if a good position was found and the current position was reset, false otherwise
+     */
+    suspend fun resetToLastKnownGoodPosition(confidenceThreshold: Float = 0.75f): Boolean {
+        val lastGoodPosition = positionHistory.lastOrNull { it.confidence >= confidenceThreshold }
+
+        return if (lastGoodPosition != null) {
+            _currentPosition.value = lastGoodPosition
+            Timber.w("Positioning recovery: Reset to last known good position with confidence ${lastGoodPosition.confidence}")
+            true
+        } else {
+            Timber.w("Positioning recovery: No good position found in history to reset to.")
+            false
+        }
     }
     
     /**
@@ -208,7 +242,8 @@ class PositionRepository(private val context: android.content.Context) : IPositi
     override suspend fun saveHistoryToFile(filePath: String): Boolean {
         try {
             val file = File(filePath)
-            val adapter = moshi.adapter(List::class.java)
+            val type = com.squareup.moshi.Types.newParameterizedType(List::class.java, UserPosition::class.java)
+            val adapter = moshi.adapter<List<UserPosition>>(type)
             val json = adapter.toJson(positionHistory.toList())
             
             file.writeText(json)
@@ -229,8 +264,9 @@ class PositionRepository(private val context: android.content.Context) : IPositi
             }
             
             val json = file.readText()
-            val adapter = moshi.adapter(List::class.java)
-            val loadedHistory = adapter.fromJson(json) as? List<UserPosition>
+            val type = com.squareup.moshi.Types.newParameterizedType(List::class.java, UserPosition::class.java)
+            val adapter = moshi.adapter<List<UserPosition>>(type)
+            val loadedHistory = adapter.fromJson(json)
             
             if (loadedHistory != null) {
                 positionHistory.clear()

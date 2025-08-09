@@ -133,6 +133,7 @@ sealed class SensorData {
      * @param accelerometer Accelerometer data in m/s²
      * @param gyroscope Gyroscope data in rad/s
      * @param magnetometer Magnetometer data in μT
+     * @param rotationVector Rotation vector data
      * @param orientation Device orientation in degrees
      * @param linearAcceleration Linear acceleration (acceleration minus gravity) in m/s²
      * @param gravity Gravity vector in m/s²
@@ -145,6 +146,7 @@ sealed class SensorData {
         val accelerometer: Vector3D = Vector3D(),
         val gyroscope: Vector3D = Vector3D(),
         val magnetometer: Vector3D = Vector3D(),
+        val rotationVector: RotationVector? = null,
         val orientation: Vector3D = Vector3D(),
         val linearAcceleration: Vector3D = Vector3D(),
         val gravity: Vector3D = Vector3D(),

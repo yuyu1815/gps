@@ -1,11 +1,14 @@
 package com.example.myapplication.service
 
 import com.example.myapplication.data.repository.IPositionRepository
+import com.example.myapplication.domain.model.Motion
 import com.example.myapplication.domain.model.SensorData
 import com.example.myapplication.domain.model.UserPosition
+import com.example.myapplication.domain.usecase.fusion.FuseSensorDataUseCase
 import com.example.myapplication.domain.usecase.pdr.DetectStepUseCase
 import com.example.myapplication.domain.usecase.pdr.EstimateHeadingUseCase
 import com.example.myapplication.domain.usecase.pdr.EstimateStepLengthUseCase
+import com.example.myapplication.domain.usecase.pdr.KalmanHeadingUseCase
 import com.example.myapplication.domain.usecase.pdr.UpdatePdrPositionUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,9 +27,10 @@ class PdrTracker(
     private val sensorMonitor: SensorMonitor,
     private val positionRepository: IPositionRepository,
     private val detectStepUseCase: DetectStepUseCase,
-    private val estimateHeadingUseCase: EstimateHeadingUseCase,
+    private val estimateHeadingUseCase: KalmanHeadingUseCase,
     private val estimateStepLengthUseCase: EstimateStepLengthUseCase,
     private val updatePdrPositionUseCase: UpdatePdrPositionUseCase,
+    private val fuseSensorDataUseCase: FuseSensorDataUseCase,
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Default)
 ) {
     // PDR state
@@ -41,6 +45,7 @@ class PdrTracker(
     private var isTracking = false
     private var lastStepTimestamp = 0L
     private var stepCount = 0
+    private var lastHeading: Float? = null
 
     /**
      * Starts PDR tracking.
@@ -103,10 +108,12 @@ class PdrTracker(
      */
     fun resetState() {
         detectStepUseCase.reset()
+        estimateHeadingUseCase.reset()
         estimateStepLengthUseCase.reset()
         updatePdrPositionUseCase.reset()
         lastStepTimestamp = 0L
         stepCount = 0
+        lastHeading = null
         _pdrState.value = PdrState()
     }
 
@@ -129,21 +136,83 @@ class PdrTracker(
             return
         }
 
-        // Convert to accelerometer data for step detection
+        // Get sensor status and positioning confidence
+        val sensorStatus = sensorMonitor.getSensorStatus()
+        val positioningConfidence = sensorMonitor.getPositioningConfidence()
+        
+        // Log sensor availability for debugging
+        if (positioningConfidence < 0.7f) {
+            Timber.w("Reduced positioning confidence: $positioningConfidence. " +
+                    "Available sensors: " +
+                    "accelerometer=${sensorStatus.accelerometer}, " +
+                    "gyroscope=${sensorStatus.gyroscope}, " +
+                    "magnetometer=${sensorStatus.magnetometer}")
+        }
+
+        // Create SensorData objects for use cases
         val accelerometerData = SensorData.Accelerometer(
             x = sensorData.accelerometer.x,
             y = sensorData.accelerometer.y,
             z = sensorData.accelerometer.z,
             timestamp = sensorData.timestamp
         )
-
-        // Detect step
-        val stepResult = detectStepUseCase.invoke(
-            DetectStepUseCase.Params(accelerometerData)
+        val gyroscopeData = SensorData.Gyroscope(
+            x = sensorData.gyroscope.x,
+            y = sensorData.gyroscope.y,
+            z = sensorData.gyroscope.z,
+            timestamp = sensorData.timestamp
         )
+        val magnetometerData = SensorData.Magnetometer(
+            x = sensorData.magnetometer.x,
+            y = sensorData.magnetometer.y,
+            z = sensorData.magnetometer.z,
+            timestamp = sensorData.timestamp
+        )
+
+        // Get heading with graceful degradation
+        val headingResult = if (sensorStatus.gyroscope && (sensorStatus.accelerometer || sensorStatus.magnetometer)) {
+            // We have enough sensors for heading estimation
+            estimateHeadingUseCase.invoke(
+                KalmanHeadingUseCase.Params(
+                    gyroscopeData = gyroscopeData,
+                    accelerometerData = accelerometerData,
+                    magnetometerData = magnetometerData,
+                    rotationVectorData = sensorData.rotationVector
+                )
+            )
+        } else {
+            // Not enough sensors for heading estimation, use last known heading
+            Timber.w("Insufficient sensors for heading estimation, using last known heading")
+            val lastHeadingValue = lastHeading ?: 0f
+            KalmanHeadingUseCase.Result(
+                heading = lastHeadingValue,
+                headingRate = 0f,
+                variance = 10f,
+                headingAccuracy = EstimateHeadingUseCase.HeadingAccuracy.LOW,
+                timestamp = sensorData.timestamp
+            )
+        }
+
+        // Detect step with graceful degradation
+        val stepResult = if (sensorStatus.accelerometer) {
+            // We have accelerometer for step detection
+            detectStepUseCase.invoke(
+                DetectStepUseCase.Params(accelerometerData)
+            )
+        } else {
+            // No accelerometer, can't detect steps
+            Timber.w("Accelerometer unavailable, step detection disabled")
+            DetectStepUseCase.Result(
+                stepDetected = false,
+                stepCount = stepCount,
+                filteredAcceleration = 0f,
+                timestamp = sensorData.timestamp
+            )
+        }
 
         // Update step count
         if (stepResult.stepDetected) {
+            val timeDelta = (stepResult.timestamp - lastStepTimestamp) / 1000.0
             stepCount = stepResult.stepCount
             lastStepTimestamp = stepResult.timestamp
 
@@ -156,17 +225,27 @@ class PdrTracker(
                 )
             )
 
-            // Get heading
-            val heading = sensorData.heading
+            // Calculate PDR motion
+            val velocity = if (timeDelta > 0) stepLength / timeDelta else 0.0
+            val angularVelocity = if (lastHeading != null && timeDelta > 0) {
+                (headingResult.heading - lastHeading!!) / timeDelta
+            } else {
+                0.0
+            }
+            lastHeading = headingResult.heading
 
-            // Update position
-            val newPosition = updatePdrPositionUseCase.invoke(
-                UpdatePdrPositionUseCase.Params(
-                    stepDetected = true,
-                    stepLength = stepLength,
-                    heading = heading,
-                    initialPosition = _pdrState.value.initialPosition,
-                    updateRepository = true
+            val pdrMotion = Motion(velocity = velocity, angularVelocity = angularVelocity)
+
+            // TODO: Get actual SLAM motion and Wi-Fi position
+            val slamMotion = Motion(0.0, 0.0)
+            val wifiPosition = UserPosition.invalid()
+
+            // Fuse data
+            val fusedPosition = fuseSensorDataUseCase.invoke(
+                FuseSensorDataUseCase.Params(
+                    slamMotion = slamMotion,
+                    wifiPosition = wifiPosition,
+                    pdrMotion = pdrMotion
                 )
             )
 
@@ -174,9 +253,9 @@ class PdrTracker(
             _pdrState.value = _pdrState.value.copy(
                 stepCount = stepCount,
                 lastStepTimestamp = lastStepTimestamp,
-                currentHeading = heading,
+                currentHeading = headingResult.heading,
                 lastStepLength = stepLength,
-                currentPosition = newPosition,
+                currentPosition = fusedPosition, // Use fused position
                 isMoving = true
             )
         } else {
@@ -185,9 +264,10 @@ class PdrTracker(
 
             // Update PDR state without position change
             _pdrState.value = _pdrState.value.copy(
-                currentHeading = sensorData.heading,
+                currentHeading = headingResult.heading,
                 isMoving = isMoving
             )
+            lastHeading = headingResult.heading
         }
     }
 

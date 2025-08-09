@@ -210,13 +210,11 @@ class BatteryOptimizer(
     }
     
     /**
-     * Gets the recommended scan configuration based on the current optimization level
-     * and device state.
+     * Gets the recommended scan configuration based on current conditions.
      * 
      * @param isStatic Whether the device is currently static
-     * @param isLongStatic Whether the device has been static for a long period
-     * @param activityLevel The current activity level (HIGH, NORMAL, LOW)
-     * @param defaultScanMode The default scan mode to use for BALANCED level
+     * @param isLongStatic Whether the device has been static for a long time
+     * @param defaultScanMode The default scan mode to use
      * @param lowPowerScanMode The scan mode to use for BATTERY_SAVING level
      * @param highPrecisionScanMode The scan mode to use for MAXIMUM_PERFORMANCE level
      * @return The recommended scan configuration
@@ -224,7 +222,6 @@ class BatteryOptimizer(
     fun getScanConfig(
         isStatic: Boolean,
         isLongStatic: Boolean,
-        activityLevel: ActivityLevel,
         defaultScanMode: Int,
         lowPowerScanMode: Int,
         highPrecisionScanMode: Int
@@ -278,14 +275,6 @@ class BatteryOptimizer(
                             scanIntervalMs = 6000,
                             scanMode = defaultScanMode,
                             description = "Balanced (static)"
-                        )
-                    }
-                    activityLevel == ActivityLevel.HIGH -> {
-                        ScanConfig(
-                            scanPeriodMs = 5000,
-                            scanIntervalMs = 3000,
-                            scanMode = defaultScanMode,
-                            description = "Balanced (high activity)"
                         )
                     }
                     else -> {

@@ -1,10 +1,6 @@
 package com.example.myapplication.presentation.viewmodel
 
-import android.content.Context
-import android.content.Intent
-import android.os.Build
 import androidx.lifecycle.viewModelScope
-import com.example.myapplication.service.BleScanService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,6 +39,7 @@ class MainViewModel : BaseViewModel<MainViewModel.MainUiState>() {
         object Settings : NavigationState()
         object Calibration : NavigationState()
         object Debug : NavigationState()
+        object Wifi : NavigationState()
         data class Details(val id: String) : NavigationState()
     }
 
@@ -98,32 +95,12 @@ class MainViewModel : BaseViewModel<MainViewModel.MainUiState>() {
      * 
      * @param context The context used to start the service
      */
-    fun startBackgroundScanning(context: Context) {
-        Timber.d("Starting background BLE scanning service")
-        
-        val serviceIntent = Intent(context, BleScanService::class.java)
-        
-        // Start the service as a foreground service
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(serviceIntent)
-        } else {
-            context.startService(serviceIntent)
-        }
-        
-        updateBackgroundScanningState(true)
-    }
+    fun startBackgroundScanning() { Timber.d("Background BLE scanning disabled in minimal build") }
     
     /**
      * Stops the background BLE scanning service.
      * 
      * @param context The context used to stop the service
      */
-    fun stopBackgroundScanning(context: Context) {
-        Timber.d("Stopping background BLE scanning service")
-        
-        val serviceIntent = Intent(context, BleScanService::class.java)
-        context.stopService(serviceIntent)
-        
-        updateBackgroundScanningState(false)
-    }
+    fun stopBackgroundScanning() { Timber.d("Background BLE scanning disabled in minimal build"); updateBackgroundScanningState(false) }
 }

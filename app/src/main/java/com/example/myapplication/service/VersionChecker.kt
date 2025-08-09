@@ -168,6 +168,10 @@ class VersionChecker(private val context: Context) {
                 if (responseCode == HttpURLConnection.HTTP_OK) {
                     val response = connection.inputStream.bufferedReader().use { it.readText() }
                     parseVersionResponse(response)
+                } else if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
+                    Timber.w("Version check endpoint not found (404). Treating as up-to-date.")
+                    // Return current version as latest to indicate up-to-date
+                    getCurrentVersion()
                 } else {
                     Timber.e("Server returned error code: $responseCode")
                     throw Exception("Server returned error code: $responseCode")

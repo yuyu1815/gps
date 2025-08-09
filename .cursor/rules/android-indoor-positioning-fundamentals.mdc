@@ -1,0 +1,212 @@
+# Android Indoor Positioning Application - Fundamental Guidelines
+
+## **Core Philosophy: Reality vs Theory**
+
+This project addresses the fundamental challenges of indoor positioning where **physical world constraints create significant barriers** to theoretical accuracy. The application uses advanced techniques to overcome these real-world limitations.
+
+### **Three Major Real-World Challenges**
+
+1. **RSSI Fluctuation**: BLE signal strength varies dramatically with environmental changes (people, doors, interference)
+   - **Solution**: Implement filtering techniques (moving average filters)
+   
+2. **Magnetic Distortion**: Indoor environments are filled with magnetic noise sources (steel, elevators, electrical equipment)
+   - **Solution**: Use gyroscope-based orientation estimation with complementary filters
+   
+3. **Multipath Issues**: Radio waves reflect off walls, floors, ceilings creating multiple signal paths
+   - **Solution**: Implement robust positioning algorithms with sensor fusion
+
+## **Architecture Principles**
+
+### **1. Coordinate System Management**
+
+Always use the [CoordinateTransformer](mdc:app/src/main/java/com/example/myapplication/domain/model/CoordinateTransformer.kt) for all coordinate conversions:
+
+- **Physical coordinates**: (x, y) in meters - real-world beacon positions
+- **Logical coordinates**: Internal application coordinates
+- **Screen coordinates**: (x, y) in pixels - display positions
+
+**Never hardcode coordinate transformations** - always use the CoordinateTransformer class.
+
+### **2. Sensor Fusion Strategy**
+
+**Primary Rule**: Never rely solely on magnetometer (compass) for indoor orientation.
+
+**Implementation Pattern**:
+```kotlin
+// Use gyroscope for short-term orientation changes
+// Use accelerometer for gravity reference
+// Use magnetometer only when reliable (outdoors or calibrated areas)
+// Implement complementary filters or Madgwick filters
+```
+
+### **3. BLE Beacon Management**
+
+**Staleness Management**: Always implement timeout mechanisms for beacon data:
+
+```kotlin
+// Beacon data older than 5 seconds should be considered invalid
+private const val BEACON_TIMEOUT_MS = 5000
+```
+
+**RSSI Filtering**: Never use raw RSSI values - always apply filtering:
+
+```kotlin
+// Use moving average filter with 5-sample window
+private const val RSSI_HISTORY_SIZE = 5
+```
+
+### **4. PDR (Pedestrian Dead Reckoning) Implementation**
+
+**Step Detection**: Use robust algorithms, not simple thresholds:
+
+1. Apply low-pass filter to accelerometer data
+2. Detect clear peak-valley patterns
+3. Consider walking rhythm (0.5-2 seconds per step)
+4. Reject peaks that occur too frequently
+
+**Heading Estimation**: Use gyroscope-based orientation with drift correction:
+
+```kotlin
+// Integrate gyroscope angular velocity for short-term changes
+// Use accelerometer for gravity reference
+// Apply complementary filter for drift correction
+```
+
+### **5. Data Management**
+
+**Configuration**: Use JSON files for external configuration:
+
+- Beacon coordinates and TxPower values
+- Map configurations and dimensions
+- Environmental calibration parameters
+
+**Logging**: Implement comprehensive data logging for algorithm improvement:
+
+- All sensor data with timestamps
+- BLE scan results
+- Position estimates and fusion results
+
+### **6. UI/UX Principles**
+
+**Uncertainty Visualization**: Always show positioning uncertainty:
+
+- Use semi-transparent circles instead of points
+- Circle radius represents positioning confidence
+- Larger circles indicate lower confidence
+
+**Debug Overlay**: Include real-time debug information during development:
+
+- Raw and filtered RSSI values
+- Current step count and heading
+- BLE and PDR position estimates
+- Sensor data graphs
+
+### **7. Performance Optimization**
+
+**Battery Management**:
+- Implement static detection to reduce sensor usage
+- Use dynamic scanning intervals based on movement speed
+- Stop unnecessary services when stationary
+
+**Memory Management**:
+- Clean up old beacon data regularly
+- Limit sensor data history size
+- Use efficient data structures for real-time processing
+
+## **File Structure Guidelines**
+
+### **Domain Layer** ([domain/](mdc:app/src/main/java/com/example/myapplication/domain/))
+- **Models**: Pure data classes representing business entities
+- **Use Cases**: Business logic implementation
+- **Coordinate Systems**: All coordinate transformation logic
+
+### **Data Layer** ([data/](mdc:app/src/main/java/com/example/myapplication/data/))
+- **Repositories**: Data access abstraction
+- **Parsers**: Configuration and data parsing utilities
+
+### **Service Layer** ([service/](mdc:app/src/main/java/com/example/myapplication/service/))
+- **BLE Services**: Beacon scanning and management
+- **Sensor Services**: Sensor data collection and processing
+- **Fusion Services**: Algorithm coordination
+
+### **UI Layer** ([ui/](mdc:app/src/main/java/com/example/myapplication/ui/))
+- **Components**: Reusable UI elements
+- **Screens**: Application screens
+- **Debug Overlays**: Development tools
+
+## **Testing Strategy**
+
+### **Unit Tests**
+- Test all coordinate transformations
+- Test sensor fusion algorithms
+- Test PDR step detection and heading estimation
+- Test BLE data filtering and timeout mechanisms
+
+### **Integration Tests**
+- Test complete positioning pipeline
+- Test map loading and coordinate systems
+- Test sensor data collection and processing
+
+### **Performance Tests**
+- Test battery consumption under various conditions
+- Test memory usage with continuous operation
+- Test positioning accuracy with known ground truth
+
+## **Calibration and Evaluation**
+
+### **Required Calibration Parameters**
+- **TxPower**: Measure RSSI at 1m distance for each beacon
+- **Environmental Factor N**: Adjust based on real-world testing
+- **Sensor Calibration**: Compass calibration for magnetometer
+
+### **Evaluation Metrics**
+- **RMSE (Root Mean Square Error)**: Quantitative accuracy measurement
+- **Ground Truth Comparison**: Compare estimated vs actual positions
+- **Performance Monitoring**: Track battery usage and processing time
+
+## **Error Handling**
+
+### **Sensor Failures**
+- Gracefully handle missing or malfunctioning sensors
+- Provide fallback positioning methods
+- Log sensor errors for debugging
+
+### **BLE Issues**
+- Handle Bluetooth permission denials
+- Manage beacon timeouts and invalid data
+- Provide user feedback for connectivity issues
+
+### **Map Loading Errors**
+- Handle missing or corrupted map files
+- Provide default coordinate systems
+- Log map loading failures
+
+## **Security and Privacy**
+
+### **Data Protection**
+- Minimize data collection to necessary positioning data
+- Implement secure storage for sensitive configuration
+- Follow Android privacy best practices
+
+### **Permission Management**
+- Request only necessary permissions
+- Provide clear explanations for permission requests
+- Handle permission denials gracefully
+
+## **Maintenance and Monitoring**
+
+### **Health Monitoring**
+- Monitor beacon battery levels and connectivity
+- Track positioning accuracy over time
+- Alert on system degradation
+
+### **Recalibration Triggers**
+- Monitor RMSE for accuracy degradation
+- Schedule periodic recalibration
+- Trigger recalibration after environmental changes
+
+This project represents a sophisticated indoor positioning system that balances theoretical accuracy with real-world constraints. Every implementation decision should consider the physical limitations of indoor environments and the need for robust, battery-efficient operation.
+description:
+globs:
+alwaysApply: false
+---

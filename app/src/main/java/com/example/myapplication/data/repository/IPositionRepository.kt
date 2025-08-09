@@ -92,4 +92,10 @@ interface IPositionRepository {
      * @return The number of entries removed
      */
     suspend fun optimizePositionHistory(): Int
+    
+    /**
+     * Gets the position change detector for monitoring position changes.
+     * @return The position change detector
+     */
+    fun getPositionChangeDetector(): com.example.myapplication.service.PositionChangeDetector
 }

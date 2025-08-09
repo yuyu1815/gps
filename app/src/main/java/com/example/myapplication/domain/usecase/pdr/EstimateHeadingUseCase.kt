@@ -5,6 +5,7 @@ import com.example.myapplication.domain.model.SensorData
 import com.example.myapplication.domain.usecase.UseCase
 import timber.log.Timber
 import kotlin.math.abs
+import kotlin.math.sqrt
 
 /**
  * Use case for estimating heading (direction) using gyroscope data.
@@ -343,6 +344,13 @@ class KalmanHeadingUseCase : UseCase<KalmanHeadingUseCase.Params, KalmanHeadingU
     private var rateVariance = 10f    // Estimate uncertainty (P matrix diagonal)
     private var lastTimestamp = 0L    // Last update timestamp
     
+    // Adaptive noise parameters
+    private var adaptiveGyroNoise = 0.01f
+    private var adaptiveMagnetometerNoise = 0.05f
+    private var adaptiveProcessNoise = 0.001f
+    private var magneticDisturbanceLevel = 0f
+    private var lastMagnetometerValues = FloatArray(3) { 0f }
+    
     // Rotation matrix and orientation angles for sensor fusion
     private val rotationMatrix = FloatArray(9)
     private val orientationAngles = FloatArray(3)
@@ -387,6 +395,9 @@ class KalmanHeadingUseCase : UseCase<KalmanHeadingUseCase.Params, KalmanHeadingU
         // Limit dt to reasonable values to prevent instability
         val limitedDt = dt.coerceAtMost(0.1f)
         
+        // Update adaptive noise parameters based on sensor data
+        updateAdaptiveNoiseParameters(gyroData, magData)
+        
         // 1. Prediction step
         // Update state estimate using gyroscope data
         val gyroZ = -gyroData.z  // Negative because heading increases clockwise
@@ -399,9 +410,9 @@ class KalmanHeadingUseCase : UseCase<KalmanHeadingUseCase.Params, KalmanHeadingU
         heading = normalizeHeading(heading * RADIANS_TO_DEGREES) / RADIANS_TO_DEGREES
         
         // Update variance (P matrix)
-        // Add process noise (Q matrix)
-        variance += limitedDt * limitedDt * params.processNoise + params.gyroNoise
-        rateVariance += params.processNoise
+        // Add process noise (Q matrix) - now using adaptive noise
+        variance += limitedDt * limitedDt * adaptiveProcessNoise + adaptiveGyroNoise
+        rateVariance += adaptiveProcessNoise
         
         // 2. Correction step (if absolute heading is available)
         var absoluteHeading = Float.NaN
@@ -417,7 +428,8 @@ class KalmanHeadingUseCase : UseCase<KalmanHeadingUseCase.Params, KalmanHeadingU
             val magHeading = getHeadingFromMagnetometer(accelData, magData) / RADIANS_TO_DEGREES
             if (!magHeading.isNaN()) {
                 absoluteHeading = magHeading
-                measurementNoise = params.magnetometerNoise
+                // Use adaptive noise for magnetometer based on detected disturbance
+                measurementNoise = adaptiveMagnetometerNoise
             }
         }
         
@@ -436,13 +448,22 @@ class KalmanHeadingUseCase : UseCase<KalmanHeadingUseCase.Params, KalmanHeadingU
             // Calculate Kalman gain
             val kalmanGain = variance / (variance + measurementNoise)
             
+            // Adaptive trust in measurements based on innovation magnitude
+            // If innovation is very large, it might be due to magnetic disturbance
+            val adaptedKalmanGain = if (abs(innovation) > 0.5) {
+                // Reduce the gain when innovation is suspiciously large
+                kalmanGain * 0.5f
+            } else {
+                kalmanGain
+            }
+            
             // Update state estimate
-            heading += kalmanGain * innovation
+            heading += adaptedKalmanGain * innovation
             
             // Update variance
-            variance = (1 - kalmanGain) * variance
+            variance = (1 - adaptedKalmanGain) * variance
             
-            Timber.v("Kalman correction: innovation=$innovation, gain=$kalmanGain, variance=$variance")
+            Timber.v("Kalman correction: innovation=$innovation, gain=$adaptedKalmanGain, variance=$variance")
         }
         
         // Convert heading back to degrees for the result
@@ -457,6 +478,74 @@ class KalmanHeadingUseCase : UseCase<KalmanHeadingUseCase.Params, KalmanHeadingU
             headingAccuracy = getAccuracyFromVariance(variance),
             timestamp = timestamp
         )
+    }
+    
+    /**
+     * Updates adaptive noise parameters based on sensor data.
+     * 
+     * This method adjusts the noise parameters dynamically based on the current
+     * sensor readings and detected disturbances.
+     * 
+     * @param gyroData Gyroscope data
+     * @param magData Magnetometer data (optional)
+     */
+    private fun updateAdaptiveNoiseParameters(
+        gyroData: SensorData.Gyroscope,
+        magData: SensorData.Magnetometer?
+    ) {
+        // 1. Adjust gyroscope noise based on motion intensity
+        val gyroMagnitude = sqrt(gyroData.x * gyroData.x + gyroData.y * gyroData.y + gyroData.z * gyroData.z)
+        
+        // Higher gyro noise during rapid movements
+        adaptiveGyroNoise = if (gyroMagnitude > 1.0f) {
+            // Increase noise parameter during rapid rotation
+            0.03f
+        } else if (gyroMagnitude > 0.5f) {
+            // Moderate rotation
+            0.015f
+        } else {
+            // Slow or no rotation
+            0.01f
+        }
+        
+        // 2. Adjust magnetometer noise based on magnetic disturbance detection
+        if (magData != null) {
+            val currentMagValues = floatArrayOf(magData.x, magData.y, magData.z)
+            
+            // Calculate magnetic field change
+            if (lastMagnetometerValues.any { it != 0f }) {
+                val magDiffX = abs(currentMagValues[0] - lastMagnetometerValues[0])
+                val magDiffY = abs(currentMagValues[1] - lastMagnetometerValues[1])
+                val magDiffZ = abs(currentMagValues[2] - lastMagnetometerValues[2])
+                
+                // Calculate total magnitude change
+                val magDiffTotal = magDiffX + magDiffY + magDiffZ
+                
+                // Update disturbance level with exponential smoothing
+                magneticDisturbanceLevel = 0.9f * magneticDisturbanceLevel + 0.1f * magDiffTotal
+                
+                // Adjust magnetometer noise based on disturbance level
+                adaptiveMagnetometerNoise = when {
+                    magneticDisturbanceLevel > 5.0f -> 0.2f  // High disturbance
+                    magneticDisturbanceLevel > 2.0f -> 0.1f  // Moderate disturbance
+                    else -> 0.05f                            // Low disturbance
+                }
+            }
+            
+            // Update last values
+            lastMagnetometerValues = currentMagValues.clone()
+        }
+        
+        // 3. Adjust process noise based on motion consistency
+        // Lower process noise during consistent motion, higher during erratic motion
+        adaptiveProcessNoise = when {
+            gyroMagnitude < 0.1f -> 0.0005f  // Very stable (almost stationary)
+            gyroMagnitude < 0.3f -> 0.001f   // Stable motion
+            gyroMagnitude < 0.7f -> 0.002f   // Moderate motion
+            else -> 0.005f                   // Erratic motion
+        }
+        
+        Timber.v("Adaptive noise: gyro=$adaptiveGyroNoise, mag=$adaptiveMagnetometerNoise, process=$adaptiveProcessNoise")
     }
     
     /**

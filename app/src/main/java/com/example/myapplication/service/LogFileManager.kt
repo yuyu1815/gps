@@ -45,6 +45,14 @@ class LogFileManager(private val context: Context) {
             }
         }
     }
+
+    private val appLogDirectory: File by lazy {
+        File(context.getExternalFilesDir(null), "app_logs").apply {
+            if (!exists()) {
+                mkdirs()
+            }
+        }
+    }
     
     /**
      * Enum representing different types of log files.
@@ -52,6 +60,7 @@ class LogFileManager(private val context: Context) {
     enum class LogType {
         SENSOR,
         BLE,
+        APP,
         ALL
     }
     
@@ -91,9 +100,13 @@ class LogFileManager(private val context: Context) {
             LogType.BLE -> {
                 addLogFilesFromDirectory(bleLogDirectory, LogType.BLE, logFiles)
             }
+            LogType.APP -> {
+                addLogFilesFromDirectory(appLogDirectory, LogType.APP, logFiles)
+            }
             LogType.ALL -> {
                 addLogFilesFromDirectory(sensorLogDirectory, LogType.SENSOR, logFiles)
                 addLogFilesFromDirectory(bleLogDirectory, LogType.BLE, logFiles)
+                addLogFilesFromDirectory(appLogDirectory, LogType.APP, logFiles)
                 // Add any other log directories here
             }
         }
@@ -184,9 +197,13 @@ class LogFileManager(private val context: Context) {
             LogType.BLE -> {
                 count += deleteFilesInDirectory(bleLogDirectory)
             }
+            LogType.APP -> {
+                count += deleteFilesInDirectory(appLogDirectory)
+            }
             LogType.ALL -> {
                 count += deleteFilesInDirectory(sensorLogDirectory)
                 count += deleteFilesInDirectory(bleLogDirectory)
+                count += deleteFilesInDirectory(appLogDirectory)
                 // Add any other log directories here
             }
         }
@@ -223,6 +240,7 @@ class LogFileManager(private val context: Context) {
         val directory = when (type) {
             LogType.SENSOR -> sensorLogDirectory
             LogType.BLE -> bleLogDirectory
+            LogType.APP -> appLogDirectory
             LogType.ALL -> rootLogDirectory
         }
         
