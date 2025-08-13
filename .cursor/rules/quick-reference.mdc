@@ -1,0 +1,273 @@
+# Indoor Positioning Quick Reference
+
+## **Essential Guidelines**
+
+### **🚨 Critical Rules**
+
+1. **Never use raw RSSI** - Always filter with moving average
+2. **Never trust magnetometer indoors** - Use gyroscope + complementary filter
+3. **Always implement beacon staleness** - 5-second timeout minimum
+4. **Always show uncertainty** - Use confidence circles, not just dots
+5. **Always use CoordinateTransformer** - Never hardcode coordinate conversions
+
+### **📁 File Structure**
+
+```
+app/src/main/java/com/example/myapplication/
+├── domain/           # Business logic
+│   ├── model/        # Data models (CoordinateTransformer, IndoorMap)
+│   └── usecase/      # Business logic implementation
+├── data/             # Data handling
+│   ├── repository/   # Data access
+│   └── parser/       # Configuration parsing
+├── service/          # Background services
+│   ├── BleScanner    # BLE scanning
+│   ├── SensorMonitor # Sensor data collection
+│   └── FusionCoordinator # Algorithm coordination
+├── ui/               # User interface
+│   ├── component/    # Reusable components
+│   ├── screen/       # Application screens
+│   └── theme/        # UI theme
+└── presentation/     # ViewModels and state management
+```
+
+### **🔧 Common Patterns**
+
+#### **BLE Beacon Management**
+```kotlin
+// Always implement staleness management
+private const val BEACON_TIMEOUT_MS = 5000
+fun cleanupOldBeacons() {
+    val now = System.currentTimeMillis()
+    discoveredBeacons.entries.removeIf { 
+        now - it.value.timestamp > BEACON_TIMEOUT_MS 
+    }
+}
+```
+
+#### **RSSI Filtering**
+```kotlin
+// Always filter RSSI with moving average
+private val rssiHistory = mutableMapOf<String, MutableList<Int>>()
+fun getFilteredRssi(address: String, newRssi: Int): Double {
+    val history = rssiHistory.getOrPut(address) { mutableListOf() }
+    history.add(newRssi)
+    if (history.size > 5) history.removeAt(0)
+    return history.average()
+}
+```
+
+#### **Sensor Fusion**
+```kotlin
+// Use gyroscope for short-term, accelerometer for long-term correction
+class ComplementaryFilter {
+    private var alpha = 0.98f // Gyroscope weight
+    fun update(gyroZ: Float, dt: Float, accelMagnitude: Float) {
+        val gyroHeading = heading + gyroZ * dt
+        if (accelMagnitude in 0.8f..1.2f) {
+            heading = alpha * gyroHeading + (1 - alpha) * accelHeading
+        } else {
+            heading = gyroHeading
+        }
+    }
+}
+```
+
+#### **Coordinate Transformation**
+```kotlin
+// Always use CoordinateTransformer for conversions
+val transformer = CoordinateTransformer(map)
+val screenPos = transformer.metersToScreen(physicalX, physicalY)
+val physicalPos = transformer.screenToMeters(screenX, screenY)
+```
+
+### **🎯 Performance Optimization**
+
+#### **Battery Management**
+- Implement static detection to reduce sensor usage
+- Use dynamic scanning intervals based on movement
+- Stop unnecessary services when stationary
+
+#### **Memory Management**
+- Clean up old beacon data regularly
+- Limit sensor data history size
+- Use efficient data structures for real-time processing
+
+### **🧪 Testing Essentials**
+
+#### **Ground Truth Testing**
+```kotlin
+@Test
+fun testPositioningAccuracy() {
+    val testPath = listOf(Position(0f, 0f), Position(5f, 0f))
+    val results = simulateMovement(testPath)
+    val rmse = calculateRMSE(testPath, results)
+    assertTrue("RMSE should be < 2m", rmse < 2.0)
+}
+```
+
+#### **Sensor Data Simulation**
+```kotlin
+class SensorDataSimulator {
+    fun generateAccelerometerData(position: Position): FloatArray {
+        val stepFrequency = 1.5f // Hz
+        val time = System.currentTimeMillis() / 1000f
+        val stepAcceleration = sin(2 * PI * stepFrequency * time) * 2f
+        return floatArrayOf(9.8f + stepAcceleration, 0f, 0f)
+    }
+}
+```
+
+### **📊 Calibration Requirements**
+
+#### **TxPower Calibration**
+- Measure RSSI at exactly 1 meter from each beacon
+- Take multiple measurements and average
+- Document environmental conditions
+
+#### **Environmental Factor Calibration**
+- Walk known distances between beacons
+- Adjust environmental factor until estimated distances match actual
+- Recalibrate when environment changes significantly
+
+### **🔍 Debug Information**
+
+#### **Essential Debug Data**
+- Raw and filtered RSSI values
+- Current step count and heading
+- BLE and PDR position estimates
+- Sensor data graphs
+- Confidence levels
+
+#### **Debug Overlay**
+```kotlin
+@Composable
+fun DebugOverlay(
+    sensorData: SensorData,
+    beaconData: List<BeaconInfo>,
+    positionData: PositionData
+) {
+    Column(background = Color.Black.copy(alpha = 0.8f)) {
+        Text("Accelerometer: ${sensorData.accelerometer.joinToString()}", color = Color.White)
+        beaconData.forEach { beacon ->
+            Text("${beacon.macAddress}: RSSI=${beacon.rssi}, Distance=${beacon.distance}m", color = Color.White)
+        }
+        Text("Confidence: ${positionData.confidence}", color = Color.White)
+    }
+}
+```
+
+### **🚨 Error Handling**
+
+#### **Sensor Failures**
+- Gracefully handle missing or malfunctioning sensors
+- Provide fallback positioning methods
+- Log sensor errors for debugging
+
+#### **BLE Issues**
+- Handle Bluetooth permission denials
+- Manage beacon timeouts and invalid data
+- Provide user feedback for connectivity issues
+
+### **📱 UI/UX Guidelines**
+
+#### **Uncertainty Visualization**
+```kotlin
+@Composable
+fun PositionIndicator(position: UserPosition) {
+    val confidence = position.confidence
+    val radius = (1.0 - confidence) * 50f + 10f // 10-60px radius
+    
+    Canvas {
+        // Draw uncertainty circle
+        drawCircle(color = Color.Blue.copy(alpha = 0.3f), radius = radius)
+        // Draw position dot
+        drawCircle(color = Color.Blue, radius = 5f)
+    }
+}
+```
+
+#### **Loading States**
+- Provide clear feedback during initialization
+- Show progress for sensor calibration
+- Indicate when positioning is active
+
+### **🔧 Configuration Management**
+
+#### **External Configuration**
+```json
+{
+  "map_name": "Office_Floor_1",
+  "width_meters": 50.0,
+  "height_meters": 30.0,
+  "beacons": [
+    {
+      "mac_address": "00:11:22:33:44:AA",
+      "x": 2.5,
+      "y": 5.0,
+      "tx_power": -59
+    }
+  ]
+}
+```
+
+### **📈 Evaluation Metrics**
+
+#### **RMSE Calculation**
+```kotlin
+fun calculateRMSE(expected: List<Position>, actual: List<Position>): Double {
+    return sqrt(expected.zip(actual).sumOf { (exp, act) ->
+        (exp.x - act.x).pow(2) + (exp.y - act.y).pow(2)
+    } / expected.size)
+}
+```
+
+### **🔄 Maintenance**
+
+#### **Health Monitoring**
+- Monitor beacon battery levels and connectivity
+- Track positioning accuracy over time
+- Alert on system degradation
+
+#### **Recalibration Triggers**
+- Monitor RMSE for accuracy degradation
+- Schedule periodic recalibration
+- Trigger recalibration after environmental changes
+
+## **Common Pitfalls to Avoid**
+
+1. **Using raw RSSI values** - Always filter
+2. **Relying on magnetometer indoors** - Use gyroscope-based orientation
+3. **Hardcoding coordinate transformations** - Use CoordinateTransformer
+4. **Ignoring beacon staleness** - Implement timeout mechanisms
+5. **Not showing uncertainty** - Always visualize confidence
+6. **Poor beacon geometry** - Avoid linear arrangements
+7. **No ground truth validation** - Always test against known positions
+8. **Ignoring battery optimization** - Implement static detection
+9. **No error handling** - Gracefully handle sensor/BLE failures
+10. **No calibration procedures** - Document and automate calibration
+
+## **Quick Commands**
+
+### **Build and Test**
+```bash
+./gradlew build          # Build project
+./gradlew test           # Run unit tests
+./gradlew connectedAndroidTest  # Run instrumented tests
+./gradlew installDebug   # Install debug version
+```
+
+### **Common Test Patterns**
+```kotlin
+@Test fun testCoordinateTransformation() { /* ... */ }
+@Test fun testSensorFusion() { /* ... */ }
+@Test fun testStepDetection() { /* ... */ }
+@Test fun testBlePositioning() { /* ... */ }
+@Test fun testPerformance() { /* ... */ }
+```
+
+This quick reference provides essential guidelines and common patterns for developing robust indoor positioning applications that handle real-world constraints while maintaining accuracy and performance.
+description:
+globs:
+alwaysApply: false
+---

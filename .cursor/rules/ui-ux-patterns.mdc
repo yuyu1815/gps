@@ -1,0 +1,446 @@
+# UI/UX Patterns for Indoor Positioning Applications
+
+## **Core Principles**
+
+### **1. Uncertainty Visualization**
+
+Always show positioning uncertainty to build user trust:
+
+```kotlin
+@Composable
+fun PositionIndicator(
+    position: UserPosition,
+    modifier: Modifier = Modifier
+) {
+    val confidence = position.confidence
+    val radius = (1.0 - confidence) * 50f + 10f // 10-60px radius
+    
+    Canvas(modifier = modifier) {
+        // Draw uncertainty circle
+        drawCircle(
+            color = Color.Blue.copy(alpha = 0.3f),
+            radius = radius,
+            center = Offset(position.x, position.y)
+        )
+        
+        // Draw position dot
+        drawCircle(
+            color = Color.Blue,
+            radius = 5f,
+            center = Offset(position.x, position.y)
+        )
+    }
+}
+```
+
+### **2. Real-time Debug Information**
+
+Provide comprehensive debug information during development:
+
+```kotlin
+@Composable
+fun DebugOverlay(
+    sensorData: SensorData,
+    beaconData: List<BeaconInfo>,
+    positionData: PositionData,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(Color.Black.copy(alpha = 0.8f))
+            .padding(8.dp)
+    ) {
+        // Sensor information
+        Text("Accelerometer: ${sensorData.accelerometer.joinToString()}", color = Color.White)
+        Text("Gyroscope: ${sensorData.gyroscope.joinToString()}", color = Color.White)
+        Text("Magnetometer: ${sensorData.magnetometer.joinToString()}", color = Color.White)
+        
+        // Beacon information
+        beaconData.forEach { beacon ->
+            Text(
+                "${beacon.macAddress}: RSSI=${beacon.rssi}, " +
+                "Distance=${beacon.distance}m, " +
+                "Age=${beacon.ageMs}ms",
+                color = Color.White
+            )
+        }
+        
+        // Position information
+        Text("BLE Position: (${positionData.blePosition.x}, ${positionData.blePosition.y})", color = Color.White)
+        Text("PDR Position: (${positionData.pdrPosition.x}, ${positionData.pdrPosition.y})", color = Color.White)
+        Text("Fused Position: (${positionData.fusedPosition.x}, ${positionData.fusedPosition.y})", color = Color.White)
+        Text("Confidence: ${positionData.confidence}", color = Color.White)
+    }
+}
+```
+
+### **3. Map Interaction Patterns**
+
+Implement intuitive map interaction:
+
+```kotlin
+@Composable
+fun InteractiveMap(
+    map: IndoorMap,
+    userPosition: UserPosition,
+    onMapInteraction: (MapInteraction) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var zoom by remember { mutableStateOf(1f) }
+    var panOffset by remember { mutableStateOf(Offset.Zero) }
+    
+    Box(modifier = modifier) {
+        // Map image
+        Image(
+            painter = painterResource(map.imagePath),
+            contentDescription = "Indoor Map",
+            modifier = Modifier
+                .scale(zoom)
+                .offset { IntOffset(panOffset.x.roundToInt(), panOffset.y.roundToInt()) }
+        )
+        
+        // User position indicator
+        PositionIndicator(
+            position = userPosition,
+            modifier = Modifier.align(Alignment.Center)
+        )
+        
+        // Zoom controls
+        Column(
+            modifier = Modifier.align(Alignment.TopEnd)
+        ) {
+            IconButton(onClick = { zoom = (zoom * 1.2f).coerceAtMost(5f) }) {
+                Icon(Icons.Default.Add, "Zoom In")
+            }
+            IconButton(onClick = { zoom = (zoom / 1.2f).coerceAtLeast(0.5f) }) {
+                Icon(Icons.Default.Remove, "Zoom Out")
+            }
+        }
+    }
+}
+```
+
+## **User Experience Guidelines**
+
+### **1. Loading States**
+
+Provide clear feedback during initialization:
+
+```kotlin
+@Composable
+fun LoadingScreen(
+    progress: Float,
+    message: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        CircularProgressIndicator(
+            progress = progress,
+            modifier = Modifier.size(64.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge
+        )
+    }
+}
+```
+
+### **2. Error Handling**
+
+Gracefully handle and communicate errors:
+
+```kotlin
+@Composable
+fun ErrorState(
+    error: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Error,
+            contentDescription = "Error",
+            modifier = Modifier.size(64.dp),
+            tint = Color.Red
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = error,
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onRetry) {
+            Text("Retry")
+        }
+    }
+}
+```
+
+### **3. Permission Handling**
+
+Guide users through permission requests:
+
+```kotlin
+@Composable
+fun PermissionRequest(
+    permission: String,
+    rationale: String,
+    onGrant: () -> Unit,
+    onDeny: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDeny,
+        title = { Text("Permission Required") },
+        text = { Text(rationale) },
+        confirmButton = {
+            Button(onClick = onGrant) {
+                Text("Grant Permission")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDeny) {
+                Text("Deny")
+            }
+        }
+    )
+}
+```
+
+## **Performance Optimization**
+
+### **1. Efficient Rendering**
+
+Optimize map rendering for smooth performance:
+
+```kotlin
+@Composable
+fun OptimizedMapRenderer(
+    map: IndoorMap,
+    userPosition: UserPosition,
+    modifier: Modifier = Modifier
+) {
+    val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    
+    // Use remember to avoid unnecessary recompositions
+    val transformedPosition = remember(userPosition, map) {
+        map.metersToPixels(userPosition.x, userPosition.y)
+    }
+    
+    // Debounce position updates
+    var debouncedPosition by remember { mutableStateOf(transformedPosition) }
+    
+    LaunchedEffect(transformedPosition) {
+        delay(100) // Debounce for 100ms
+        debouncedPosition = transformedPosition
+    }
+    
+    Canvas(modifier = modifier) {
+        // Render map and position efficiently
+        drawMap(map)
+        drawPosition(debouncedPosition)
+    }
+}
+```
+
+### **2. Battery-Aware UI**
+
+Adapt UI based on battery level:
+
+```kotlin
+@Composable
+fun BatteryAwareUI(
+    batteryLevel: Float,
+    content: @Composable () -> Unit
+) {
+    val isLowBattery = batteryLevel < 0.2f
+    
+    if (isLowBattery) {
+        // Show simplified UI for low battery
+        LowBatteryMode(content)
+    } else {
+        // Show full UI
+        content()
+    }
+}
+
+@Composable
+fun LowBatteryMode(content: @Composable () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        content()
+        
+        // Overlay with battery warning
+        Surface(
+            modifier = Modifier.align(Alignment.TopCenter),
+            color = Color.Yellow.copy(alpha = 0.8f)
+        ) {
+            Text(
+                "Low Battery Mode - Reduced Features",
+                modifier = Modifier.padding(8.dp),
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
+```
+
+## **Accessibility**
+
+### **1. Screen Reader Support**
+
+Provide accessibility information:
+
+```kotlin
+@Composable
+fun AccessiblePositionIndicator(
+    position: UserPosition,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .semantics {
+                contentDescription = "User position at coordinates " +
+                    "${position.x.roundToInt()} meters, " +
+                    "${position.y.roundToInt()} meters. " +
+                    "Position confidence is ${(position.confidence * 100).roundToInt()}%"
+            }
+    ) {
+        PositionIndicator(position = position)
+    }
+}
+```
+
+### **2. High Contrast Support**
+
+Support high contrast themes:
+
+```kotlin
+@Composable
+fun HighContrastPositionIndicator(
+    position: UserPosition,
+    modifier: Modifier = Modifier
+) {
+    val isHighContrast = LocalConfiguration.current.uiMode and 
+                        Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+    
+    val indicatorColor = if (isHighContrast) {
+        Color.White
+    } else {
+        Color.Blue
+    }
+    
+    PositionIndicator(
+        position = position,
+        color = indicatorColor,
+        modifier = modifier
+    )
+}
+```
+
+## **Testing Patterns**
+
+### **1. UI Component Tests**
+
+```kotlin
+@Test
+fun testPositionIndicator() {
+    val position = UserPosition(10f, 20f, 0.8f)
+    
+    composeTestRule.setContent {
+        PositionIndicator(position = position)
+    }
+    
+    // Verify position indicator is displayed
+    composeTestRule.onNodeWithContentDescription(
+        "User position at coordinates 10 meters, 20 meters. Position confidence is 80%"
+    ).assertIsDisplayed()
+}
+```
+
+### **2. Interaction Tests**
+
+```kotlin
+@Test
+fun testMapZoomInteraction() {
+    composeTestRule.setContent {
+        InteractiveMap(
+            map = testMap,
+            userPosition = testPosition,
+            onMapInteraction = { /* handle interaction */ }
+        )
+    }
+    
+    // Test zoom in
+    composeTestRule.onNodeWithContentDescription("Zoom In").performClick()
+    
+    // Verify zoom level increased
+    // Add assertions for zoom state
+}
+```
+
+### **3. Performance Tests**
+
+- Test UI responsiveness during continuous position updates
+- Verify smooth animations and transitions
+- Test memory usage with large maps
+
+## **Internationalization**
+
+### **1. Multi-language Support**
+
+```kotlin
+@Composable
+fun LocalizedPositionText(
+    position: UserPosition,
+    modifier: Modifier = Modifier
+) {
+    val stringResources = LocalStringResources.current
+    
+    Text(
+        text = stringResources.formatPosition(
+            x = position.x,
+            y = position.y,
+            confidence = position.confidence
+        ),
+        modifier = modifier
+    )
+}
+```
+
+### **2. RTL Support**
+
+Ensure proper layout for right-to-left languages:
+
+```kotlin
+@Composable
+fun RTLCompatibleMap(
+    map: IndoorMap,
+    modifier: Modifier = Modifier
+) {
+    val layoutDirection = LocalLayoutDirection.current
+    
+    Box(
+        modifier = modifier
+            .layoutDirection(layoutDirection)
+    ) {
+        // Map content
+    }
+}
+```
+
+This rule ensures intuitive, accessible, and performant UI/UX for indoor positioning applications that builds user trust through transparency and provides clear feedback for all system states.
+description:
+globs:
+alwaysApply: false
+---

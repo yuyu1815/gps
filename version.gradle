@@ -1,0 +1,102 @@
+/**
+ * Automated versioning script for the Android Indoor Positioning Application.
+ * This script provides functions to automatically increment version codes and names
+ * based on git tags and commit history.
+ */
+
+ext {
+    /**
+     * Gets the version code from the latest git tag or generates one based on the current date and time.
+     * Format: YYMMDDHHNN (Year, Month, Day, Hour, Build Number)
+     * Example: 2508060101 (for 2025-08-06 01:01)
+     *
+     * @return The version code as an integer
+     */
+    getVersionCode = { ->
+        try {
+            def stdout = new ByteArrayOutputStream()
+            exec {
+                commandLine 'git', 'describe', '--tags', '--abbrev=0'
+                standardOutput = stdout
+            }
+            def tag = stdout.toString().trim()
+            
+            // If tag exists and follows vX.Y.Z format, use it to generate version code
+            if (tag =~ /v\d+\.\d+\.\d+/) {
+                def (major, minor, patch) = tag.substring(1).tokenize('.')
+                return (major.toInteger() * 10000) + (minor.toInteger() * 100) + patch.toInteger()
+            }
+        } catch (Exception e) {
+            // If git command fails or no tags exist, use date-based version code
+            println "No git tags found or error executing git command. Using date-based version code."
+        }
+        
+        // Fallback to date-based version code
+        def date = new Date()
+        def formattedDate = date.format('yyMMddHH')
+        def buildNumber = "01" // Could be incremented based on CI build number
+        return (formattedDate + buildNumber).toInteger()
+    }
+    
+    /**
+     * Gets the version name from the latest git tag or generates one based on the current date.
+     * Format: X.Y.Z for tagged releases, or X.Y.Z-SNAPSHOT-YYMMDD for development builds
+     *
+     * @return The version name as a string
+     */
+    getVersionName = { ->
+        try {
+            def stdout = new ByteArrayOutputStream()
+            exec {
+                commandLine 'git', 'describe', '--tags', '--abbrev=0'
+                standardOutput = stdout
+            }
+            def tag = stdout.toString().trim()
+            
+            // If tag exists and follows vX.Y.Z format, use it as version name
+            if (tag =~ /v\d+\.\d+\.\d+/) {
+                return tag.substring(1) // Remove the 'v' prefix
+            }
+        } catch (Exception e) {
+            // If git command fails or no tags exist, use default version with date
+            println "No git tags found or error executing git command. Using default version name with date."
+        }
+        
+        // Check if we're on a development branch
+        def branchStdout = new ByteArrayOutputStream()
+        try {
+            exec {
+                commandLine 'git', 'rev-parse', '--abbrev-ref', 'HEAD'
+                standardOutput = branchStdout
+            }
+            def branch = branchStdout.toString().trim()
+            
+            // If we're not on main branch, add branch name to version
+            if (branch != "main" && branch != "master") {
+                def date = new Date()
+                def formattedDate = date.format('yyMMdd')
+                return "1.0.0-SNAPSHOT-${formattedDate}-${branch}"
+            }
+        } catch (Exception e) {
+            println "Error getting branch name. Using default version name."
+        }
+        
+        // Fallback to simple version name with date
+        def date = new Date()
+        def formattedDate = date.format('yyMMdd')
+        return "1.0.0-SNAPSHOT-${formattedDate}"
+    }
+    
+    /**
+     * Applies the version code and name to the Android application configuration.
+     *
+     * @param project The project to apply the version to
+     */
+    applyVersion = { project ->
+        project.android.defaultConfig.versionCode = getVersionCode()
+        project.android.defaultConfig.versionName = getVersionName()
+        
+        println "Applied version code: ${project.android.defaultConfig.versionCode}"
+        println "Applied version name: ${project.android.defaultConfig.versionName}"
+    }
+}

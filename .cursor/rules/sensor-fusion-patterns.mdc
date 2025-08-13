@@ -1,0 +1,217 @@
+# Sensor Fusion Implementation Patterns
+
+## **Core Principles**
+
+### **1. Never Trust Magnetometer Indoors**
+
+The magnetometer (compass) is unreliable in indoor environments due to magnetic interference from:
+- Steel structures and reinforcement
+- Electrical equipment and wiring
+- Elevators and moving metal objects
+- Electronic devices and computers
+
+**Solution**: Use gyroscope-based orientation with drift correction.
+
+### **2. Complementary Filter Implementation**
+
+```kotlin
+class ComplementaryFilter {
+    private var alpha = 0.98f // Gyroscope weight
+    private var heading = 0f
+    
+    fun update(gyroZ: Float, dt: Float, accelMagnitude: Float) {
+        // Short-term: Integrate gyroscope
+        val gyroHeading = heading + gyroZ * dt
+        
+        // Long-term: Use accelerometer for gravity reference
+        // Only when device is relatively stable
+        if (accelMagnitude > 0.8f && accelMagnitude < 1.2f) {
+            // Device is relatively stable, can use accelerometer
+            // Apply complementary filter
+            heading = alpha * gyroHeading + (1 - alpha) * accelHeading
+        } else {
+            // Use gyroscope only
+            heading = gyroHeading
+        }
+    }
+}
+```
+
+### **3. Step Detection Algorithm**
+
+```kotlin
+class RobustStepDetector {
+    private val accelHistory = mutableListOf<Float>()
+    private var lastStepTime = 0L
+    private val minStepInterval = 400L // milliseconds
+    
+    fun detectStep(accelMagnitude: Float): Boolean {
+        accelHistory.add(accelMagnitude)
+        if (accelHistory.size > 10) {
+            accelHistory.removeAt(0)
+        }
+        
+        // Apply low-pass filter
+        val filteredAccel = accelHistory.average().toFloat()
+        
+        // Detect peak with minimum threshold
+        val isPeak = filteredAccel > 1.2f && 
+                     isLocalMaximum(accelHistory)
+        
+        // Check timing constraint
+        val currentTime = System.currentTimeMillis()
+        val timeSinceLastStep = currentTime - lastStepTime
+        
+        if (isPeak && timeSinceLastStep > minStepInterval) {
+            lastStepTime = currentTime
+            return true
+        }
+        
+        return false
+    }
+}
+```
+
+### **4. Sensor Data Collection Pattern**
+
+```kotlin
+class SensorDataCollector {
+    private val sensorData = mutableListOf<SensorData>()
+    private val maxHistorySize = 1000
+    
+    fun onSensorChanged(event: SensorEvent) {
+        val data = SensorData(
+            timestamp = event.timestamp,
+            sensorType = event.sensor.type,
+            values = event.values.clone(),
+            accuracy = event.accuracy
+        )
+        
+        sensorData.add(data)
+        
+        // Maintain history size
+        if (sensorData.size > maxHistorySize) {
+            sensorData.removeAt(0)
+        }
+    }
+    
+    fun getRecentData(sensorType: Int, count: Int): List<SensorData> {
+        return sensorData.filter { it.sensorType == sensorType }
+                       .takeLast(count)
+    }
+}
+```
+
+### **5. Kalman Filter for Position Fusion**
+
+```kotlin
+class PositionFusionKalman {
+    // State: [x, y, vx, vy] - position and velocity
+    private val state = Matrix(4, 1)
+    private val covariance = Matrix(4, 4)
+    
+    fun predict(dt: Float) {
+        // Predict next state based on current velocity
+        val F = Matrix(4, 4).apply {
+            set(0, 0, 1f); set(0, 2, dt)
+            set(1, 1, 1f); set(1, 3, dt)
+            set(2, 2, 1f)
+            set(3, 3, 1f)
+        }
+        
+        state = F * state
+        covariance = F * covariance * F.transpose() + processNoise
+    }
+    
+    fun update(measurement: Pair<Float, Float>) {
+        // Update with BLE position measurement
+        val H = Matrix(2, 4).apply {
+            set(0, 0, 1f)
+            set(1, 1, 1f)
+        }
+        
+        val z = Matrix(2, 1).apply {
+            set(0, 0, measurement.first)
+            set(1, 0, measurement.second)
+        }
+        
+        // Kalman gain calculation
+        val S = H * covariance * H.transpose() + measurementNoise
+        val K = covariance * H.transpose() * S.inverse()
+        
+        // Update state and covariance
+        state = state + K * (z - H * state)
+        covariance = (I - K * H) * covariance
+    }
+}
+```
+
+## **Best Practices**
+
+### **1. Sensor Calibration**
+
+Always implement sensor calibration:
+- Magnetometer calibration for compass
+- Accelerometer bias removal
+- Gyroscope drift compensation
+
+### **2. Data Validation**
+
+Validate sensor data before processing:
+```kotlin
+fun isValidSensorData(values: FloatArray, accuracy: Int): Boolean {
+    return accuracy != SensorManager.SENSOR_STATUS_UNRELIABLE &&
+           values.all { it.isFinite() && !it.isNaN() }
+}
+```
+
+### **3. Performance Optimization**
+
+- Use efficient data structures for real-time processing
+- Implement data downsampling for high-frequency sensors
+- Cache frequently accessed sensor data
+
+### **4. Error Handling**
+
+- Handle sensor unavailability gracefully
+- Provide fallback positioning methods
+- Log sensor errors for debugging
+
+### **5. Battery Management**
+
+- Implement static detection to reduce sensor usage
+- Use appropriate sensor sampling rates
+- Stop unnecessary sensors when not needed
+
+## **Testing Patterns**
+
+### **1. Unit Tests for Sensor Fusion**
+
+```kotlin
+@Test
+fun testComplementaryFilter() {
+    val filter = ComplementaryFilter()
+    
+    // Simulate gyroscope data
+    filter.update(0.1f, 0.01f, 1.0f) // Small rotation
+    assertEquals(0.001f, filter.getHeading(), 0.001f)
+}
+```
+
+### **2. Integration Tests**
+
+- Test complete sensor fusion pipeline
+- Verify coordinate system consistency
+- Test performance under various conditions
+
+### **3. Performance Tests**
+
+- Measure CPU usage during sensor processing
+- Test battery consumption
+- Verify real-time performance requirements
+
+This rule ensures robust sensor fusion implementation that handles real-world sensor limitations while maintaining positioning accuracy.
+description:
+globs:
+alwaysApply: false
+---
